@@ -1,0 +1,1 @@
+EdgeFormer is a custom transformer implementation incorporating Multi-Head Latent Attention optimization to run efficiently on edge devices with limited compute.

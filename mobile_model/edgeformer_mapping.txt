@@ -1,0 +1,27 @@
+# EdgeFormer Model Loading Instructions
+
+The model was saved using a different key structure than what the current code expects.
+To load this model, you need to modify your EdgeFormer model class to match this format, or convert the state dict.
+
+## Current Key Format
+
+- embeddings.position_ids
+- embeddings.word_embeddings.weight
+- embeddings.position_embeddings.weight
+- embeddings.LayerNorm.weight
+- embeddings.LayerNorm.bias
+- layers.0.ln_1.weight
+- layers.0.ln_1.bias
+- layers.0.ln_2.weight
+- layers.0.ln_2.bias
+- layers.0.attention.q_proj.weight
+
+## Model Configuration
+
+- max_position_embeddings: 128
+- hidden_size: 128
+- vocab_size: 30522
+- num_hidden_layers: 2
+- intermediate_size: 1024
+- num_attention_heads: 4
+- latent_size_factor: 8

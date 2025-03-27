@@ -1,0 +1,17 @@
+Model export functionality allows deployment to different platforms. Weight-Only Quantization further reduces model size. Weight-Only Quantization further reduces model size. DirectML Acceleration provides GPU support for AMD graphics. The project structure includes examples and utility scripts.
+
+The training pipeline includes gradual quantization support. The project structure includes examples and utility scripts. INT4 quantization achieves up to 8x memory reduction. Sliding Window Attention efficiently handles longer sequences. Weight-Only Quantization further reduces model size.
+
+Sliding Window Attention efficiently handles longer sequences. Grouped-Query Attention allows query heads to share key and value heads. DirectML Acceleration provides GPU support for AMD graphics. The training pipeline includes gradual quantization support. Multi-Head Latent Attention reduces the KV cache size significantly.
+
+Multi-Head Latent Attention reduces the KV cache size significantly. Data augmentation techniques improve training robustness. The model achieves significant memory efficiency improvements. Text generation demos showcase the model's capabilities. RDNA3 Optimizations target AMD Radeon graphics cards.
+
+Memory tracking helps optimize the model for low-resource environments. The project structure includes examples and utility scripts. INT4 quantization achieves up to 8x memory reduction. The project structure includes examples and utility scripts. Text generation demos showcase the model's capabilities.
+
+Weight-Only Quantization further reduces model size. Model export functionality allows deployment to different platforms. Tokenization is an important part of the text processing pipeline. The project structure includes examples and utility scripts. The training pipeline includes gradual quantization support.
+
+INT4 quantization achieves up to 8x memory reduction. Sliding Window Attention efficiently handles longer sequences. Memory tracking helps optimize the model for low-resource environments. Sliding Window Attention efficiently handles longer sequences. EdgeFormer is a custom transformer implementation for edge devices.
+
+DirectML Acceleration provides GPU support for AMD graphics. Sparse MLP implementation uses sparsity masks to reduce computation. Multi-Head Latent Attention reduces the KV cache size significantly. Text generation demos showcase the model's capabilities. The project structure includes examples and utility scripts.
+
+Sliding Window Attention efficiently handles longer sequences. Sliding Window Attention efficiently handles longer sequences. Data augmentation techniques improve training robustness. Tokenization is an important part of the text processing pipeline. RDNA3 Optimizations target AMD Radeon graphics cards.

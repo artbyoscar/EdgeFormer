@@ -1,0 +1,6 @@
+# MLA with Sliding Window
+Sequence Length, Memory Usage (MB), Inference Time (s), Success
+128, 29.03, 0.1103, True
+512, 123.07, 0.2770, True
+2048, 514.04, 1.8538, True
+4096, 611.46, 5.4756, True

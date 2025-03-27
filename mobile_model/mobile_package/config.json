@@ -1,0 +1,10 @@
+{
+  "model_type": "EdgeFormer",
+  "vocab_size": 30522,
+  "hidden_size": 128,
+  "num_hidden_layers": 2,
+  "num_attention_heads": 8,
+  "latent_size_factor": 8,
+  "version": "1.0.0",
+  "rdna3_optimized": true
+}

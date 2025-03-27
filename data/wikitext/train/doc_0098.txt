@@ -1,0 +1,9 @@
+DirectML Acceleration provides GPU support for AMD graphics. The training pipeline includes gradual quantization support. Grouped-Query Attention allows query heads to share key and value heads. The model achieves significant memory efficiency improvements.
+
+KV Cache Offloading supports processing very long sequences. Data augmentation techniques improve training robustness. Text generation demos showcase the model's capabilities. Sparse MLP implementation uses sparsity masks to reduce computation.
+
+Benchmark results show promising performance on edge devices. Memory tracking helps optimize the model for low-resource environments. Data augmentation techniques improve training robustness. Benchmark results show promising performance on edge devices.
+
+INT4 quantization achieves up to 8x memory reduction. Sliding Window Attention efficiently handles longer sequences. Benchmark results show promising performance on edge devices. Weight-Only Quantization further reduces model size.
+
+The model achieves significant memory efficiency improvements. Text generation demos showcase the model's capabilities. The project structure includes examples and utility scripts. Documentation is essential for understanding the codebase.

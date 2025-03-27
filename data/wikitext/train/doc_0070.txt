@@ -1,0 +1,19 @@
+DirectML Acceleration provides GPU support for AMD graphics. Documentation is essential for understanding the codebase. Tokenization is an important part of the text processing pipeline. Tokenization is an important part of the text processing pipeline. The project structure includes examples and utility scripts. Multi-Head Latent Attention reduces the KV cache size significantly.
+
+DirectML Acceleration provides GPU support for AMD graphics. The project structure includes examples and utility scripts. Sliding Window Attention efficiently handles longer sequences. Sliding Window Attention efficiently handles longer sequences. INT4 quantization achieves up to 8x memory reduction. Model export functionality allows deployment to different platforms.
+
+Sliding Window Attention efficiently handles longer sequences. The training pipeline includes gradual quantization support. EdgeFormer is a custom transformer implementation for edge devices. DirectML Acceleration provides GPU support for AMD graphics. KV Cache Offloading supports processing very long sequences. KV Cache Offloading supports processing very long sequences.
+
+DirectML Acceleration provides GPU support for AMD graphics. Model export functionality allows deployment to different platforms. DirectML Acceleration provides GPU support for AMD graphics. Weight-Only Quantization further reduces model size. The training pipeline includes gradual quantization support. Data augmentation techniques improve training robustness.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. Sliding Window Attention efficiently handles longer sequences. Model export functionality allows deployment to different platforms. Memory tracking helps optimize the model for low-resource environments. Sparse MLP implementation uses sparsity masks to reduce computation. KV Cache Offloading supports processing very long sequences.
+
+Model export functionality allows deployment to different platforms. Data augmentation techniques improve training robustness. Grouped-Query Attention allows query heads to share key and value heads. INT4 quantization achieves up to 8x memory reduction. Data augmentation techniques improve training robustness. Memory tracking helps optimize the model for low-resource environments.
+
+Memory tracking helps optimize the model for low-resource environments. Text generation demos showcase the model's capabilities. The model achieves significant memory efficiency improvements. The model achieves significant memory efficiency improvements. RDNA3 Optimizations target AMD Radeon graphics cards. DirectML Acceleration provides GPU support for AMD graphics.
+
+Grouped-Query Attention allows query heads to share key and value heads. The model achieves significant memory efficiency improvements. Sparse MLP implementation uses sparsity masks to reduce computation. RDNA3 Optimizations target AMD Radeon graphics cards. INT4 quantization achieves up to 8x memory reduction. Sparse MLP implementation uses sparsity masks to reduce computation.
+
+RDNA3 Optimizations target AMD Radeon graphics cards. Model export functionality allows deployment to different platforms. INT4 quantization achieves up to 8x memory reduction. The project structure includes examples and utility scripts. The project structure includes examples and utility scripts. KV Cache Offloading supports processing very long sequences.
+
+Memory tracking helps optimize the model for low-resource environments. KV Cache Offloading supports processing very long sequences. Sliding Window Attention efficiently handles longer sequences. Weight-Only Quantization further reduces model size. Model export functionality allows deployment to different platforms. Multi-Head Latent Attention reduces the KV cache size significantly.

@@ -1,0 +1,15 @@
+Grouped-Query Attention allows query heads to share key and value heads. Model export functionality allows deployment to different platforms. Model export functionality allows deployment to different platforms.
+
+EdgeFormer is a custom transformer implementation for edge devices. Model export functionality allows deployment to different platforms. Text generation demos showcase the model's capabilities.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. DirectML Acceleration provides GPU support for AMD graphics. KV Cache Offloading supports processing very long sequences.
+
+EdgeFormer is a custom transformer implementation for edge devices. Grouped-Query Attention allows query heads to share key and value heads. DirectML Acceleration provides GPU support for AMD graphics.
+
+Model export functionality allows deployment to different platforms. Sliding Window Attention efficiently handles longer sequences. Sliding Window Attention efficiently handles longer sequences.
+
+The project structure includes examples and utility scripts. Benchmark results show promising performance on edge devices. INT4 quantization achieves up to 8x memory reduction.
+
+Weight-Only Quantization further reduces model size. Model export functionality allows deployment to different platforms. The project structure includes examples and utility scripts.
+
+RDNA3 Optimizations target AMD Radeon graphics cards. The model achieves significant memory efficiency improvements. Sliding Window Attention efficiently handles longer sequences.

@@ -1,0 +1,27 @@
+Grouped-Query Attention allows query heads to share key and value heads. Benchmark results show promising performance on edge devices. DirectML Acceleration provides GPU support for AMD graphics. Tokenization is an important part of the text processing pipeline.
+
+KV Cache Offloading supports processing very long sequences. INT4 quantization achieves up to 8x memory reduction. The training pipeline includes gradual quantization support. Text generation demos showcase the model's capabilities.
+
+Model export functionality allows deployment to different platforms. INT4 quantization achieves up to 8x memory reduction. Multi-Head Latent Attention reduces the KV cache size significantly. RDNA3 Optimizations target AMD Radeon graphics cards.
+
+Memory tracking helps optimize the model for low-resource environments. Benchmark results show promising performance on edge devices. Multi-Head Latent Attention reduces the KV cache size significantly. Multi-Head Latent Attention reduces the KV cache size significantly.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. RDNA3 Optimizations target AMD Radeon graphics cards. Sparse MLP implementation uses sparsity masks to reduce computation. The training pipeline includes gradual quantization support.
+
+KV Cache Offloading supports processing very long sequences. Benchmark results show promising performance on edge devices. EdgeFormer is a custom transformer implementation for edge devices. The project structure includes examples and utility scripts.
+
+RDNA3 Optimizations target AMD Radeon graphics cards. Text generation demos showcase the model's capabilities. Documentation is essential for understanding the codebase. Documentation is essential for understanding the codebase.
+
+Multi-Head Latent Attention reduces the KV cache size significantly. Sparse MLP implementation uses sparsity masks to reduce computation. KV Cache Offloading supports processing very long sequences. Documentation is essential for understanding the codebase.
+
+Tokenization is an important part of the text processing pipeline. Benchmark results show promising performance on edge devices. Multi-Head Latent Attention reduces the KV cache size significantly. Text generation demos showcase the model's capabilities.
+
+Multi-Head Latent Attention reduces the KV cache size significantly. Text generation demos showcase the model's capabilities. Grouped-Query Attention allows query heads to share key and value heads. Grouped-Query Attention allows query heads to share key and value heads.
+
+Grouped-Query Attention allows query heads to share key and value heads. Grouped-Query Attention allows query heads to share key and value heads. Documentation is essential for understanding the codebase. RDNA3 Optimizations target AMD Radeon graphics cards.
+
+EdgeFormer is a custom transformer implementation for edge devices. Tokenization is an important part of the text processing pipeline. Documentation is essential for understanding the codebase. Grouped-Query Attention allows query heads to share key and value heads.
+
+Text generation demos showcase the model's capabilities. KV Cache Offloading supports processing very long sequences. Data augmentation techniques improve training robustness. Documentation is essential for understanding the codebase.
+
+Tokenization is an important part of the text processing pipeline. Sliding Window Attention efficiently handles longer sequences. Documentation is essential for understanding the codebase. Sparse MLP implementation uses sparsity masks to reduce computation.

@@ -1,0 +1,9 @@
+Sparse MLP implementation uses sparsity masks to reduce computation. Benchmark results show promising performance on edge devices. Sliding Window Attention efficiently handles longer sequences. INT4 quantization achieves up to 8x memory reduction. KV Cache Offloading supports processing very long sequences. Text generation demos showcase the model's capabilities.
+
+Weight-Only Quantization further reduces model size. INT4 quantization achieves up to 8x memory reduction. INT4 quantization achieves up to 8x memory reduction. EdgeFormer is a custom transformer implementation for edge devices. Multi-Head Latent Attention reduces the KV cache size significantly. Memory tracking helps optimize the model for low-resource environments.
+
+The project structure includes examples and utility scripts. Tokenization is an important part of the text processing pipeline. Sparse MLP implementation uses sparsity masks to reduce computation. Grouped-Query Attention allows query heads to share key and value heads. DirectML Acceleration provides GPU support for AMD graphics. Documentation is essential for understanding the codebase.
+
+Memory tracking helps optimize the model for low-resource environments. EdgeFormer is a custom transformer implementation for edge devices. KV Cache Offloading supports processing very long sequences. The training pipeline includes gradual quantization support. Model export functionality allows deployment to different platforms. The training pipeline includes gradual quantization support.
+
+DirectML Acceleration provides GPU support for AMD graphics. RDNA3 Optimizations target AMD Radeon graphics cards. Sparse MLP implementation uses sparsity masks to reduce computation. Weight-Only Quantization further reduces model size. EdgeFormer is a custom transformer implementation for edge devices. KV Cache Offloading supports processing very long sequences.

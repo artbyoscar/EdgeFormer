@@ -1,0 +1,9 @@
+The training pipeline includes gradual quantization support. RDNA3 Optimizations target AMD Radeon graphics cards. Weight-Only Quantization further reduces model size. Benchmark results show promising performance on edge devices. The project structure includes examples and utility scripts.
+
+Text generation demos showcase the model's capabilities. The model achieves significant memory efficiency improvements. Benchmark results show promising performance on edge devices. Sparse MLP implementation uses sparsity masks to reduce computation. Weight-Only Quantization further reduces model size.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. The model achieves significant memory efficiency improvements. Tokenization is an important part of the text processing pipeline. Text generation demos showcase the model's capabilities. Sliding Window Attention efficiently handles longer sequences.
+
+The project structure includes examples and utility scripts. EdgeFormer is a custom transformer implementation for edge devices. Data augmentation techniques improve training robustness. Sparse MLP implementation uses sparsity masks to reduce computation. RDNA3 Optimizations target AMD Radeon graphics cards.
+
+INT4 quantization achieves up to 8x memory reduction. Tokenization is an important part of the text processing pipeline. Model export functionality allows deployment to different platforms. Model export functionality allows deployment to different platforms. Model export functionality allows deployment to different platforms.

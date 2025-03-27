@@ -1,0 +1,23 @@
+Tokenization is an important part of the text processing pipeline. RDNA3 Optimizations target AMD Radeon graphics cards. Benchmark results show promising performance on edge devices.
+
+Grouped-Query Attention allows query heads to share key and value heads. INT4 quantization achieves up to 8x memory reduction. Sliding Window Attention efficiently handles longer sequences.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. Memory tracking helps optimize the model for low-resource environments. Benchmark results show promising performance on edge devices.
+
+Documentation is essential for understanding the codebase. The project structure includes examples and utility scripts. Benchmark results show promising performance on edge devices.
+
+Grouped-Query Attention allows query heads to share key and value heads. Weight-Only Quantization further reduces model size. EdgeFormer is a custom transformer implementation for edge devices.
+
+Tokenization is an important part of the text processing pipeline. Text generation demos showcase the model's capabilities. Documentation is essential for understanding the codebase.
+
+Benchmark results show promising performance on edge devices. Benchmark results show promising performance on edge devices. Sliding Window Attention efficiently handles longer sequences.
+
+Memory tracking helps optimize the model for low-resource environments. The training pipeline includes gradual quantization support. Memory tracking helps optimize the model for low-resource environments.
+
+The model achieves significant memory efficiency improvements. KV Cache Offloading supports processing very long sequences. Weight-Only Quantization further reduces model size.
+
+Sliding Window Attention efficiently handles longer sequences. Documentation is essential for understanding the codebase. Grouped-Query Attention allows query heads to share key and value heads.
+
+Text generation demos showcase the model's capabilities. KV Cache Offloading supports processing very long sequences. The training pipeline includes gradual quantization support.
+
+RDNA3 Optimizations target AMD Radeon graphics cards. The model achieves significant memory efficiency improvements. Data augmentation techniques improve training robustness.

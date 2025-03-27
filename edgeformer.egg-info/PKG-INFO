@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: edgeformer
+Version: 0.1.0
+Summary: Optimized transformer model with Multi-Head Latent Attention for edge devices
+Author: Oscar Nunez
+Author-email: art.by.oscar.n@gmail.com
+Keywords: transformer,nlp,optimization,edge,mla
+Requires-Python: >=3.8
+Requires-Dist: torch>=2.0.0
+Requires-Dist: transformers>=4.30.0
+Requires-Dist: accelerate>=0.20.0
+Requires-Dist: datasets>=2.12.0
+Requires-Dist: optimum>=1.8.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: tqdm>=4.65.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

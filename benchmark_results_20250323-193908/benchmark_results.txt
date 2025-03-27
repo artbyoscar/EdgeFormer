@@ -1,0 +1,32 @@
+EdgeFormer Benchmark Results
+==========================
+
+Inference Time (seconds)
+-----------------------
+Sequence Length  CPU         
+64               0.0614       
+128              0.0713       
+256              0.1188       
+512              0.2039       
+1024             0.4489       
+2048             1.0906       
+
+Throughput (tokens/sec)
+-----------------------
+Sequence Length  CPU         
+64               1042.2       
+128              1796.4       
+256              2155.5       
+512              2511.2       
+1024             2281.3       
+2048             1877.8       
+
+Memory Usage (MB)
+----------------
+Sequence Length  CPU         
+64               49.9         
+128              44.8         
+256              51.2         
+512              66.2         
+1024             124.2        
+2048             259.7        

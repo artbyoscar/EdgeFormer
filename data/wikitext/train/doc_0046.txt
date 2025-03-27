@@ -1,0 +1,35 @@
+Multi-Head Latent Attention reduces the KV cache size significantly. KV Cache Offloading supports processing very long sequences. INT4 quantization achieves up to 8x memory reduction. Benchmark results show promising performance on edge devices. EdgeFormer is a custom transformer implementation for edge devices. Memory tracking helps optimize the model for low-resource environments.
+
+The project structure includes examples and utility scripts. Benchmark results show promising performance on edge devices. The project structure includes examples and utility scripts. Grouped-Query Attention allows query heads to share key and value heads. The training pipeline includes gradual quantization support. Sparse MLP implementation uses sparsity masks to reduce computation.
+
+DirectML Acceleration provides GPU support for AMD graphics. Benchmark results show promising performance on edge devices. KV Cache Offloading supports processing very long sequences. INT4 quantization achieves up to 8x memory reduction. KV Cache Offloading supports processing very long sequences. Weight-Only Quantization further reduces model size.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. KV Cache Offloading supports processing very long sequences. Data augmentation techniques improve training robustness. RDNA3 Optimizations target AMD Radeon graphics cards. The model achieves significant memory efficiency improvements. KV Cache Offloading supports processing very long sequences.
+
+EdgeFormer is a custom transformer implementation for edge devices. Tokenization is an important part of the text processing pipeline. RDNA3 Optimizations target AMD Radeon graphics cards. The project structure includes examples and utility scripts. Memory tracking helps optimize the model for low-resource environments. DirectML Acceleration provides GPU support for AMD graphics.
+
+Memory tracking helps optimize the model for low-resource environments. Multi-Head Latent Attention reduces the KV cache size significantly. Text generation demos showcase the model's capabilities. Grouped-Query Attention allows query heads to share key and value heads. The training pipeline includes gradual quantization support. The training pipeline includes gradual quantization support.
+
+Grouped-Query Attention allows query heads to share key and value heads. Benchmark results show promising performance on edge devices. Grouped-Query Attention allows query heads to share key and value heads. The model achieves significant memory efficiency improvements. Weight-Only Quantization further reduces model size. Text generation demos showcase the model's capabilities.
+
+The training pipeline includes gradual quantization support. Data augmentation techniques improve training robustness. The project structure includes examples and utility scripts. Memory tracking helps optimize the model for low-resource environments. Benchmark results show promising performance on edge devices. Sparse MLP implementation uses sparsity masks to reduce computation.
+
+RDNA3 Optimizations target AMD Radeon graphics cards. Sliding Window Attention efficiently handles longer sequences. EdgeFormer is a custom transformer implementation for edge devices. Grouped-Query Attention allows query heads to share key and value heads. The project structure includes examples and utility scripts. INT4 quantization achieves up to 8x memory reduction.
+
+The model achieves significant memory efficiency improvements. Sliding Window Attention efficiently handles longer sequences. KV Cache Offloading supports processing very long sequences. RDNA3 Optimizations target AMD Radeon graphics cards. Model export functionality allows deployment to different platforms. The model achieves significant memory efficiency improvements.
+
+Text generation demos showcase the model's capabilities. Text generation demos showcase the model's capabilities. EdgeFormer is a custom transformer implementation for edge devices. Sliding Window Attention efficiently handles longer sequences. Benchmark results show promising performance on edge devices. Documentation is essential for understanding the codebase.
+
+Memory tracking helps optimize the model for low-resource environments. Memory tracking helps optimize the model for low-resource environments. Tokenization is an important part of the text processing pipeline. Sliding Window Attention efficiently handles longer sequences. Grouped-Query Attention allows query heads to share key and value heads. Tokenization is an important part of the text processing pipeline.
+
+Sparse MLP implementation uses sparsity masks to reduce computation. Sparse MLP implementation uses sparsity masks to reduce computation. KV Cache Offloading supports processing very long sequences. The training pipeline includes gradual quantization support. KV Cache Offloading supports processing very long sequences. INT4 quantization achieves up to 8x memory reduction.
+
+The training pipeline includes gradual quantization support. KV Cache Offloading supports processing very long sequences. Sparse MLP implementation uses sparsity masks to reduce computation. Weight-Only Quantization further reduces model size. The model achieves significant memory efficiency improvements. Tokenization is an important part of the text processing pipeline.
+
+The training pipeline includes gradual quantization support. Documentation is essential for understanding the codebase. Benchmark results show promising performance on edge devices. Text generation demos showcase the model's capabilities. Text generation demos showcase the model's capabilities. Memory tracking helps optimize the model for low-resource environments.
+
+Text generation demos showcase the model's capabilities. Tokenization is an important part of the text processing pipeline. The training pipeline includes gradual quantization support. Weight-Only Quantization further reduces model size. Sparse MLP implementation uses sparsity masks to reduce computation. Multi-Head Latent Attention reduces the KV cache size significantly.
+
+INT4 quantization achieves up to 8x memory reduction. Data augmentation techniques improve training robustness. Data augmentation techniques improve training robustness. Model export functionality allows deployment to different platforms. KV Cache Offloading supports processing very long sequences. INT4 quantization achieves up to 8x memory reduction.
+
+Tokenization is an important part of the text processing pipeline. INT4 quantization achieves up to 8x memory reduction. Weight-Only Quantization further reduces model size. RDNA3 Optimizations target AMD Radeon graphics cards. Memory tracking helps optimize the model for low-resource environments. Data augmentation techniques improve training robustness.

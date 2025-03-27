@@ -1,0 +1,3 @@
+Standard Attention maximum sequence length: 2048
+Multi-Head Latent Attention maximum sequence length: 2048
+MLA with Sliding Window maximum sequence length: 2048
