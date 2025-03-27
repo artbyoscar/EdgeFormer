@@ -76,6 +76,13 @@ wandb/
 ehthumbs.db
 Thumbs.db
 
+# Add these specific patterns to your .gitignore
+logs/edgeformer.log
+checkpoints/checkpoint_*.pt
+checkpoints/epoch_*.pt
+checkpoints/best_model.pt
+checkpoints/final_model.pt
+
 # Specific to EdgeFormer project
 benchmark_results_*/
 *.png
