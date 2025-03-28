@@ -7,6 +7,7 @@ import gc
 from .config import EdgeFormerConfig
 from .transformer_block import EdgeFormerBlock
 from ..utils.long_sequence import process_long_document
+from src.utils.htps_budget_manager import HTPSBudgetManager
 
 
 # ---- Embeddings Implementation ----
@@ -119,6 +120,46 @@ class EdgeFormerLMHead(nn.Module):
         logits = self.decoder(hidden_states) + self.bias
         return logits
 
+# ---- SimpleTokenizer----
+class SimpleTokenizer:
+    """Simple tokenizer class for when we don't have a full tokenizer object."""
+    
+    def __init__(self, char_to_idx=None, idx_to_char=None, vocab_size=50000):
+        self.char_to_idx = char_to_idx
+        self.idx_to_char = idx_to_char
+        self.vocab_size = vocab_size
+        
+    def encode(self, text, return_tensors=None):
+        """Simple encoding function."""
+        if self.char_to_idx:
+            tokens = [self.char_to_idx.get(c, 0) for c in text]
+        else:
+            tokens = [ord(c) % self.vocab_size for c in text]
+            
+        if return_tensors == "pt":
+            return torch.tensor([tokens])
+        return tokens
+        
+    def decode(self, token_ids):
+        """Simple decoding function."""
+        if isinstance(token_ids, torch.Tensor):
+            token_ids = token_ids.tolist()
+            
+        if isinstance(token_ids[0], list):
+            token_ids = token_ids[0]
+            
+        text = ""
+        for token_id in token_ids:
+            if self.idx_to_char:
+                text += self.idx_to_char.get(token_id, '')
+            else:
+                text += chr(token_id % 128)
+        return text
+    
+    def __len__(self):
+        """Return the vocabulary size."""
+        return self.vocab_size
+
 # ---- Main EdgeFormer Model ----
 class EdgeFormer(nn.Module):
     def __init__(self, config):
@@ -190,7 +231,27 @@ class EdgeFormer(nn.Module):
             "past_key_values": past_key_values,
             "use_cache": kwargs.get("use_cache", True),
         }
+    def estimate_confidence(self, logits: torch.Tensor) -> float:
+        """
+        Estimate model confidence from output logits.
+    
+        Args:
+            logits: Output logits from the model
         
+        Returns:
+            float: Confidence score between 0 and 1
+        """
+        # Get probabilities from logits
+        probs = torch.softmax(logits, dim=-1)
+    
+        # Get maximum probability as confidence
+        max_probs = torch.max(probs, dim=-1)[0]
+    
+        # Average confidence across the sequence
+        avg_confidence = max_probs.mean().item()
+    
+        return avg_confidence   
+     
     def forward(
         self,
         input_ids=None,
@@ -474,9 +535,11 @@ class EdgeFormer(nn.Module):
         num_return_sequences=1,
         pad_token_id=None,
         eos_token_id=None,
+        budget_manager=None,
+        task_complexity=None,
     ):
-        """Generate text using the model.
-    
+        """Generate text using the model with optional budget management.
+
         Args:
             input_text: Either a string or tokenized input_ids tensor
             attention_mask: Optional attention mask
@@ -489,13 +552,20 @@ class EdgeFormer(nn.Module):
             num_return_sequences: Number of sequences to return
             pad_token_id: Token ID for padding
             eos_token_id: Token ID for end of sequence
-        
+            budget_manager: Optional HTPSBudgetManager for controlling compute
+            task_complexity: Optional task complexity score for budget management
+    
         Returns:
             Generated text
         """
         self.eval()
         device = next(self.parameters()).device
-    
+
+        # Initialize budget manager if specified
+        using_budget = budget_manager is not None
+        if using_budget:
+            budget_manager.reset()
+
         # Handle string input by tokenizing it
         if isinstance(input_text, str):
             # If we're using character-level tokenization, convert string to tokens
@@ -511,25 +581,25 @@ class EdgeFormer(nn.Module):
             input_ids = input_text
             if input_ids.dim() == 1:
                 input_ids = input_ids.unsqueeze(0)  # Add batch dimension
-    
+
         # Store the prompt for later reconstruction
         prompt_length = input_ids.shape[1]
-    
+
         # Set default token IDs
         pad_token_id = pad_token_id if pad_token_id is not None else getattr(self.config, 'pad_token_id', 0)
         eos_token_id = eos_token_id if eos_token_id is not None else getattr(self.config, 'eos_token_id', None)
-    
+
         batch_size = input_ids.shape[0]
-    
+
         # Initialize past key values for efficient generation
         past_key_values = None
-    
+
         # Keep track of which sequences are already finished
         unfinished_sequences = input_ids.new(batch_size).fill_(1)
-    
+
         # Clone input_ids to avoid modifying the original
         input_ids = input_ids.clone()
-    
+
         # Generate until we reach max_length or all sequences are finished
         cur_len = input_ids.shape[1]
         while cur_len < max_length and unfinished_sequences.sum().item() > 0:
@@ -537,21 +607,57 @@ class EdgeFormer(nn.Module):
             model_inputs = self.prepare_inputs_for_generation(
                 input_ids, past_key_values=past_key_values, attention_mask=attention_mask
             )
-        
+    
             # Forward pass
             model_inputs['use_cache'] = True
             outputs = self.forward(**model_inputs)
             next_token_logits = outputs["logits"][:, -1, :]
         
+            # Apply budget enforcement if using budget manager
+            if using_budget:
+                # Check if we need to extend thinking or enforce budget
+                if hasattr(self, 'tokenizer'):
+                    tokenizer = self.tokenizer
+                else:
+                    # Create simple tokenizer with char mappings if available
+                    tokenizer = SimpleTokenizer(
+                        char_to_idx=getattr(self, 'char_to_idx', None),
+                        idx_to_char=getattr(self, 'idx_to_char', None),
+                        vocab_size=self.config.vocab_size
+                    )
+                
+                input_ids, continue_gen = budget_manager.enforce_budget(
+                    tokenizer, input_ids, next_token_logits, task_complexity
+                )
+            
+                # Stop generation if budget is exhausted
+                if not continue_gen:
+                    break
+                
+                # If input_ids were extended with thinking tokens, update past key values
+                if past_key_values is not None and input_ids.shape[1] > cur_len:
+                    # Need to recompute for the added tokens
+                    extension_inputs = self.prepare_inputs_for_generation(
+                        input_ids[:, cur_len:], past_key_values=past_key_values, attention_mask=attention_mask
+                    )
+                    extension_inputs['use_cache'] = True
+                    extension_outputs = self.forward(**extension_inputs)
+                    past_key_values = extension_outputs.get("past_key_values", None)
+                    # Update next token logits after extension
+                    next_token_logits = extension_outputs["logits"][:, -1, :]
+                    # Update current length
+                    cur_len = input_ids.shape[1]
+                    continue
+    
             # Apply temperature scaling
             next_token_logits = next_token_logits / temperature
-        
+    
             # Apply repetition penalty
             if repetition_penalty != 1.0:
                 for i in range(batch_size):
                     for token_id in set(input_ids[i].tolist()):
                         next_token_logits[i, token_id] /= repetition_penalty
-        
+    
             # Select next tokens
             if do_sample:
                 # Apply top-k filtering
@@ -561,24 +667,24 @@ class EdgeFormer(nn.Module):
                     min_value = values[..., -1, None]
                     indices_to_remove = next_token_logits < min_value
                     next_token_logits[indices_to_remove] = -float("inf")
-            
+        
                 # Apply top-p (nucleus) filtering
                 if top_p < 1.0:
                     sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
                     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-                
+            
                     # Remove tokens with cumulative probability above the threshold
                     sorted_indices_to_remove = cumulative_probs > top_p
                     # Shift the indices to the right to keep also the first token above the threshold
                     sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
                     sorted_indices_to_remove[..., 0] = 0
-                
+            
                     # Scatter sorted tensors to original indexing
                     indices_to_remove = sorted_indices_to_remove.scatter(
                         dim=1, index=sorted_indices, src=sorted_indices_to_remove
                     )
                     next_token_logits[indices_to_remove] = -float("inf")
-            
+        
                 # Sample from the filtered distribution
                 probs = F.softmax(next_token_logits, dim=-1)
                 next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
@@ -586,6 +692,10 @@ class EdgeFormer(nn.Module):
                 # Greedy decoding
                 next_tokens = torch.argmax(next_token_logits, dim=-1)
         
+            # Update token count in budget manager if using
+            if using_budget:
+                budget_manager.update_token_count(1)
+    
             # Update unfinished sequences
             if eos_token_id is not None:
                 # Set EOS token probability to 0 for unfinished sequences
@@ -595,23 +705,23 @@ class EdgeFormer(nn.Module):
                 unfinished_sequences = unfinished_sequences * ~eos_in_next_tokens
             else:
                 tokens_to_add = next_tokens
-        
+    
             # Add tokens to sequences
             input_ids = torch.cat([input_ids, tokens_to_add.unsqueeze(-1)], dim=-1)
-        
+    
             # Update attention mask if needed
             if attention_mask is not None:
                 attention_mask = torch.cat(
                     [attention_mask, attention_mask.new_ones((batch_size, 1))],
                     dim=-1
                 )
-        
+    
             # Update progress
             cur_len += 1
-        
+    
             # Update past key values
             past_key_values = outputs.get("past_key_values", None)
-    
+
         # Convert back to text if input was string
         if isinstance(input_text, str):
             generated_text = ""

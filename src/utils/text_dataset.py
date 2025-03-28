@@ -153,3 +153,20 @@ def get_data_loaders(dataset, batch_size=4, val_split=0.1, shuffle=True):
     logger.info(f"Created data loaders with {len(train_loader)} training batches and {len(val_loader)} validation batches")
     
     return train_loader, val_loader
+
+def get_tokenizer():
+    """
+    Create a simple tokenizer for testing.
+    This is a placeholder function for demo purposes.
+    In a real implementation, this would load a proper tokenizer.
+    
+    Returns:
+        SimpleTokenizer: A basic tokenizer for testing
+    """
+    # Import here to avoid circular imports
+    from src.model.edgeformer import SimpleTokenizer
+    
+    # Create a basic tokenizer with minimal functionality
+    tokenizer = SimpleTokenizer(vocab_size=32000)
+    
+    return tokenizer
