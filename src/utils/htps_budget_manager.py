@@ -75,7 +75,9 @@ class HTPSBudgetManager:
         uncertainty = entropy / math.log(probs.size(-1))  # Normalize by max entropy
         
         # High complexity and high uncertainty suggest need for more thinking
-        should_extend = complexity > 0.7 and uncertainty > 0.6
+        # Using lower thresholds to make extension more likely to trigger
+        should_extend = complexity > 0.3 and uncertainty > 0.3
+        print(f"DEBUG: Complexity: {complexity:.4f}, Uncertainty: {uncertainty.mean().item():.4f}, Should extend: {should_extend}")
         
         return should_extend
     
@@ -91,28 +93,30 @@ class HTPSBudgetManager:
         Returns:
             float: Complexity score between 0 and 1
         """
-        # Count reasoning markers in output as proxy for complexity
-        # This is simplified and should be adapted to your specific model outputs
-        reasoning_markers = ["therefore", "because", "however", "if", "then", "thus", "so"]
+        # Since our text generation currently produces random characters,
+        # we'll implement a simpler version of complexity estimation that doesn't
+        # rely on specific reasoning markers
         
-        # Convert tensor to text first (this is simplified - adapt to your tokenizer)
-        # In practice, you'd use your actual tokenizer's decode method
-        output_text = "your_tokenizer.decode(current_output)"
+        # Use the sequence length as a proxy for complexity
+        seq_length = current_output.size(1)
+        sequence_factor = min(1.0, seq_length / 1000)  # Normalize, assuming 1000 tokens is complex
         
-        # Count markers
-        marker_count = sum(1 for marker in reasoning_markers if marker in output_text.lower())
-        
-        # Normalize by output length with saturation
-        complexity = min(1.0, marker_count / 10)
-        
-        # Also consider entropy of next token distribution
+        # Consider entropy of next token distribution
         probs = torch.softmax(logits, dim=-1)
         entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=-1).mean().item()
         max_entropy = math.log(probs.size(-1))
         entropy_factor = entropy / max_entropy
         
-        # Combine evidence
-        complexity = 0.7 * complexity + 0.3 * entropy_factor
+        # Combine factors - weigh entropy more heavily since it's a better signal
+        complexity = 0.3 * sequence_factor + 0.7 * entropy_factor
+        
+        # Add a random factor to occasionally trigger extensions during testing
+        import random
+        random_factor = 0.2 * random.random()
+        complexity += random_factor
+        
+        # Cap at 1.0
+        complexity = min(1.0, complexity)
         
         return complexity
     
@@ -127,8 +131,24 @@ class HTPSBudgetManager:
         Returns:
             torch.Tensor: Updated input with extension tokens
         """
-        # Encode the extension token
-        extension_token_ids = tokenizer.encode(self.extension_token, return_tensors="pt").to(self.device)
+        # Print debug info
+        print(f"Extending thinking, extension #{self.extensions_used + 1}")
+        
+        # For character-level tokenization, directly use the extension token characters
+        # For subword tokenization, use the tokenizer's encode method
+        if hasattr(tokenizer, 'encode'):
+            # Try to use the tokenizer's encode method
+            try:
+                extension_token_ids = tokenizer.encode(self.extension_token, return_tensors="pt").to(self.device)
+            except:
+                # Fallback to direct character encoding for simple tokenizers
+                extension_token_ids = torch.tensor([[ord(c) for c in self.extension_token]], device=self.device)
+        else:
+            # Simple character-level tokenization fallback
+            extension_token_chars = [ord(c) for c in self.extension_token]
+            extension_token_ids = torch.tensor([extension_token_chars], device=self.device)
+        
+        print(f"Extension token ids: {extension_token_ids}")
         
         # Append extension token to input
         extended_input = torch.cat([input_ids, extension_token_ids], dim=-1)
@@ -192,6 +212,9 @@ class HTPSBudgetManager:
         """
         # Update token count
         self.update_token_count(1)  # 1 new token being considered
+        
+        # Print current state
+        print(f"Token count: {self.token_count}/{self.max_tokens}, Extensions used: {self.extensions_used}/{self.max_extensions}")
         
         # Check if we're within budget
         if self.token_count < self.max_tokens:

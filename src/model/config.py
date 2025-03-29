@@ -16,10 +16,11 @@ class EdgeFormerConfig:
         pad_token_id=0,
         bos_token_id=1,
         eos_token_id=2,
+        attention_type="standard",  # Added attention_type parameter
         latent_size_factor=8,  # Latent size divisor for MLA
         num_kv_groups=4,  # For grouped-query attention
         use_sliding_window=True,
-        sliding_window_size=512,
+        sliding_window_size=None,  # Changed to None to be set dynamically
         use_flash_attention=True,
         use_sparse_mlp=True,
         mlp_sparsity=0.8,
@@ -59,11 +60,14 @@ class EdgeFormerConfig:
             bos_token_id: ID for beginning of sequence token
             eos_token_id: ID for end of sequence token
             
+            # Attention mechanism
+            attention_type: Type of attention mechanism to use ("standard", "mla", "mla_window")
+            
             # MLA and optimization specific
             latent_size_factor: Divisor for latent size calculation
             num_kv_groups: Number of KV groups for grouped-query attention
             use_sliding_window: Whether to use sliding window attention
-            sliding_window_size: Size of attention window
+            sliding_window_size: Size of attention window (if None, will be set to half of max_position_embeddings)
             use_flash_attention: Whether to use FlashAttention
             use_sparse_mlp: Whether to use sparse MLP
             mlp_sparsity: Sparsity factor for MLP
@@ -101,12 +105,21 @@ class EdgeFormerConfig:
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
         
+        # Attention mechanism
+        self.attention_type = attention_type
+        
         # MLA and optimization specific
         self.latent_size_factor = latent_size_factor
         self.latent_size = hidden_size // latent_size_factor
         self.num_kv_groups = num_kv_groups
         self.use_sliding_window = use_sliding_window
-        self.sliding_window_size = sliding_window_size
+        
+        # Set sliding window size dynamically if not provided
+        if sliding_window_size is None:
+            self.sliding_window_size = max(1, min(512, max_position_embeddings // 2))
+        else:
+            self.sliding_window_size = sliding_window_size
+            
         self.use_flash_attention = use_flash_attention
         self.use_sparse_mlp = use_sparse_mlp
         self.mlp_sparsity = mlp_sparsity
@@ -114,6 +127,10 @@ class EdgeFormerConfig:
         self.optimize_for_rdna3 = optimize_for_rdna3
         self.debug_mode = debug_mode
         
+        # Adjust max_budget_tokens if needed
+        if max_budget_tokens > max_position_embeddings:
+            max_budget_tokens = max_position_embeddings
+            
         # Budget forcing settings
         self.enable_budget_forcing = enable_budget_forcing
         self.max_budget_tokens = max_budget_tokens
@@ -132,13 +149,20 @@ class EdgeFormerConfig:
     
     def _validate_config(self):
         """Validate configuration settings."""
+        # Validate attention type
+        valid_attention_types = ["standard", "mla", "mla_window"]
+        if self.attention_type not in valid_attention_types:
+            raise ValueError(f"attention_type must be one of: {', '.join(valid_attention_types)}")
+        
         # Validate MLA-specific settings
         if not self.latent_size > 0:
             raise ValueError("latent_size must be greater than 0")
         
         # Validate sliding window settings
         if self.use_sliding_window and (self.sliding_window_size <= 0 or self.sliding_window_size > self.max_position_embeddings):
-            raise ValueError(f"sliding_window_size must be between 1 and {self.max_position_embeddings}")
+            # Auto-adjust the sliding window size instead of raising an error
+            self.sliding_window_size = max(1, min(self.max_position_embeddings // 2, self.max_position_embeddings))
+            print(f"Adjusted sliding_window_size to {self.sliding_window_size} to fit within max_position_embeddings")
         
         # Validate sparsity settings
         if self.use_sparse_mlp and (self.mlp_sparsity <= 0 or self.mlp_sparsity >= 1):
@@ -147,7 +171,8 @@ class EdgeFormerConfig:
         # Validate budget forcing settings
         if self.enable_budget_forcing:
             if self.max_budget_tokens > self.max_position_embeddings:
-                raise ValueError("max_budget_tokens cannot exceed max_position_embeddings")
+                self.max_budget_tokens = self.max_position_embeddings
+                print(f"Adjusted max_budget_tokens to {self.max_budget_tokens} to match max_position_embeddings")
                 
             if self.max_thinking_extensions <= 0:
                 raise ValueError("max_thinking_extensions must be greater than 0")

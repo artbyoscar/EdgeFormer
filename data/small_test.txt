@@ -1,1 +1,1 @@
-EdgeFormer is a custom transformer implementation incorporating Multi-Head Latent Attention optimization to run efficiently on edge devices with limited compute.
+EdgeFormer is a custom transformer implementation optimized for edge devices. It incorporates Multi-Head Latent Attention and other techniques for efficient inference with limited resources. The model supports long context windows through sliding window attention mechanisms.
