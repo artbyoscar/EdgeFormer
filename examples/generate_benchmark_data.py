@@ -39,7 +39,6 @@ def run_benchmark(args):
             "use_recurrent": True,
             "use_budget": False,
             "use_kv_cache": False,
-            "min_iterations": 2,
             "max_iterations": 8,
             "convergence_threshold": 0.005
         },
@@ -65,7 +64,6 @@ def run_benchmark(args):
             "use_recurrent": True,
             "use_budget": True,
             "use_kv_cache": True,
-            "min_iterations": 2,
             "max_iterations": 8,
             "convergence_threshold": 0.005,
             "max_budget_tokens": 2048,

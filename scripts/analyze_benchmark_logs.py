@@ -76,7 +76,14 @@ def analyze_benchmarks(input_dir, output_file):
     for metrics in results:
         feature_str = ", ".join([k for k, v in metrics['features'].items() if v])
         mem_usage = sum(metrics['memory_usage']) / len(metrics['memory_usage']) if metrics['memory_usage'] else 0
-        print(f"- {metrics['file']}: Features: {feature_str}, Avg Memory: {mem_usage:.2f} MB, Duration: {metrics.get('total_duration', 'N/A'):.2f}s")
+        
+        # Handle the case where total_duration might be a string
+        if isinstance(metrics.get('total_duration'), (int, float)):
+            duration_str = f"{metrics.get('total_duration'):.2f}s"
+        else:
+            duration_str = str(metrics.get('total_duration', 'N/A'))
+            
+        print(f"- {metrics['file']}: Features: {feature_str}, Avg Memory: {mem_usage:.2f} MB, Duration: {duration_str}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze benchmark logs")

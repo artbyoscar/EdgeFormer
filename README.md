@@ -149,12 +149,14 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed MemoryRetriever Initialization**: Added required `hidden_size` parameter and removed unsupported parameters
 * **Fixed Associative Memory Demo**: Updated memory methods to use `get_all_entries()` instead of `get_all_memories()`
 * **Fixed Memory Vector Generation**: Corrected `add_memory` method to properly extract hidden states
+* **Fixed Benchmark Analysis Script**: Updated string formatting to handle non-numeric duration values 
+* **Generated Initial Benchmark Results**: Created preliminary performance benchmarks showing recurrent processing advantages at 1024 tokens
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
-* **Complete Benchmark Analysis**: Analyze results from comprehensive benchmarking (High Priority)
+* **Complete Benchmark Analysis**: Analyzing results from comprehensive benchmarking (Almost Completed)
 * **Improve Associative Memory Performance**: Optimize memory retrieval for better reasoning tasks (Medium Priority)
-* **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority)
+* **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority, Installation of nltk in progress)
 * **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities (High Priority)
 * **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths (Medium Priority)
 * **Extend Text Generation Capabilities:** Further improve text generation quality and diversity (Medium Priority)
