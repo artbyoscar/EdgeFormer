@@ -215,9 +215,11 @@ python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir 
 # Filter outliers for cleaner analysis
 python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md --filter_outliers
 ```
-Here's the remainder of the updated README file:
-🧩 Project Structure
-CopyEdgeFormer/
+
+## 🧩 Project Structure
+
+```
+EdgeFormer/
 ├── src/                       # Core model implementation
 │   ├── model/                 # Model architecture
 │   │   ├── edgeformer.py      # Main EdgeFormer model
@@ -268,6 +270,7 @@ CopyEdgeFormer/
 ├── scripts/                   # Helper scripts
 │   ├── analyze_benchmarks.py  # Benchmark analysis and visualization script
 │   ├── visualize_benchmarks.py # Benchmark visualization utilities
+│   ├── analyze_benchmark_logs.py # Log analysis tool
 │   └── curate_limo_dataset.py # LIMO dataset curation script
 ├── checkpoints/               # Saved model checkpoints
 ├── data/                      # Dataset files
@@ -275,10 +278,15 @@ CopyEdgeFormer/
 ├── convert_model_keys.py      # Key format conversion tool
 ├── README_features.md         # Detailed documentation of advanced features
 └── README.md                  # Project documentation
-📝 Next Steps
+```
+
+## 📝 Next Steps
+
 Now that we've implemented and tested the core features, here are the immediate next steps:
-1. Complete the benchmark analysis (1-2 days)
-bashCopy# Check the output directory for benchmark results
+
+1. **Complete the benchmark analysis (1-2 days)**
+```bash
+# Check the output directory for benchmark results
 ls -la benchmark_results
 
 # Generate a comprehensive analysis report
@@ -286,8 +294,11 @@ python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file
 
 # Create visualizations from benchmark data
 python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
-2. Optimize associative memory performance (2-3 days)
-bashCopy# Profile memory retrieval performance
+```
+
+2. **Optimize associative memory performance (2-3 days)**
+```bash
+# Profile memory retrieval performance
 python examples/test_htps_associative_memory.py --profile
 
 # Test memory integration with different configurations
@@ -295,14 +306,23 @@ python examples/htps_associative_memory_demo.py --use_recurrent --min_iterations
 
 # Benchmark associative memory on reasoning tasks
 python examples/benchmark_all_features.py --feature memory --task reasoning --output_dir benchmark_results/memory_reasoning
-3. Begin LIMO training implementation (3-4 days)
-bashCopy# Create a small curated dataset from WikiText
+```
+
+3. **Begin LIMO training implementation (3-4 days)**
+```bash
+# Install NLTK
+pip install nltk
+
+# Create a small curated dataset from WikiText
 python scripts/curate_limo_dataset.py --input_data data/wikitext --output_dir data/limo_curated --quality_threshold 0.8
 
 # Test LIMO training on a small model
 python examples/train_limo.py --dataset data/limo_curated --model_size small --epochs 10 --output_dir checkpoints/limo_test
-4. Push changes to GitHub
-bashCopy# Update version information
+```
+
+4. **Push changes to GitHub**
+```bash
+# Update version information
 echo "0.3.0" > VERSION
 
 # Commit all changes
@@ -322,8 +342,11 @@ git tag -a v0.3.0 -m "Associative Memory and Benchmarking Release"
 # Push to GitHub
 git push origin main
 git push origin v0.3.0
-5. Update documentation
-bashCopy# Update API documentation
+```
+
+5. **Update documentation**
+```bash
+# Update API documentation
 python scripts/generate_api_docs.py --output_dir edgeformer-docs/docs/api
 
 # Update feature documentation with benchmark results
@@ -335,7 +358,24 @@ nano edgeformer-docs/docs/features/associative_memory.md
 # Serve the updated documentation
 cd edgeformer-docs
 mkdocs serve
-📄 License
+```
+
+## 📊 Latest Benchmark Results
+
+```
+Summary:
+- memory_test_budget.log: Features: budget, Avg Memory: 0.00 MB, Duration: N/A
+- memory_test_combined.log: Features: , Avg Memory: 0.00 MB, Duration: N/A
+- memory_test_kvcache.log: Features: kv_cache, Avg Memory: 0.00 MB, Duration: N/A
+- memory_test_recurrent.log: Features: recurrent, Avg Memory: 0.00 MB, Duration: N/A
+```
+
+Note: The benchmark logs were processed but appear to be in the initialization phase with no data recorded yet. Full benchmark analysis will be available soon.
+
+## 📄 License
+
 This project is licensed under the MIT License - see the LICENSE file for details.
-Author
-Developed by Oscar Nunez (art.by.oscar.n@gmail.com) using vibe coding principles.RetryClaude can make mistakes. Please double-check responses.
+
+## Author
+
+Developed by Oscar Nunez (art.by.oscar.n@gmail.com) using vibe coding principles.
