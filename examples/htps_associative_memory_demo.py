@@ -356,9 +356,8 @@ class AssociativeMemoryDemo:
         # Initialize associative memory
         self.memory = HTPSMemory(
             capacity=args.memory_size,  # Using capacity instead of memory_size
-            embedding_dim=self.config.hidden_size,
-            selection_strategy=args.memory_strategy
-            # Removed hidden_size parameter
+            hidden_size=self.config.hidden_size,  # Use the model's hidden size from config
+            selection_strategy='htps'
         )
         
         # Initialize memory retriever - adjust parameters based on debug output

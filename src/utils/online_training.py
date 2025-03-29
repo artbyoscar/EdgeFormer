@@ -14,6 +14,7 @@ import logging
 import threading
 import queue
 import json
+import shutil
 from collections import deque
 import numpy as np
 import torch
@@ -402,7 +403,7 @@ class OnlineTrainer:
         latest_path = checkpoint_dir / "model_latest.pt"
         if os.path.exists(latest_path):
             os.remove(latest_path)
-        os.symlink(model_path, latest_path)
+        shutil.copy2(model_path, latest_path)  # Use copy instead of symlink
         
         # Save training state
         state = {

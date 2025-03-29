@@ -52,6 +52,29 @@ EdgeFormer aims to provide best-in-class performance and efficiency for Transfor
 * **Associative Memory Performance:** Preliminary tests show that incorporating associative memory mechanisms increases accuracy on complex reasoning tasks by 15-20% with only 3-5% computational overhead in most scenarios.
 * **LIMO-based Training:** Using merely 2,500 high-quality training examples produces comparable results to models trained on 100,000+ examples, reducing training time by up to 75% while maintaining 95-98% of full performance.
 
+## 📈 Latest Benchmark Results
+
+Our most recent benchmarks on the Lenovo Yoga (AMD Ryzen) with the small model configuration show:
+
+| Sequence Length | Tokens/Second | Inference Time (s) | Memory Usage (MB) |
+|-----------------|---------------|-------------------|-------------------|
+| 128             | 510.53        | 0.25              | 354.48            |
+| 512             | 1760.87       | 0.29              | 480.50            |
+| 1024            | 2208.09       | 0.46              | 609.24            |
+| 2048            | 2217.42       | 0.92              | 874.35            |
+| 4096            | 1385.62       | 2.96              | 1688.32           |
+
+These results highlight several performance characteristics:
+
+1. **Optimal Performance Range**: The model achieves peak efficiency around 1024-2048 tokens, reaching over 2200 tokens per second.
+2. **Performance Scaling**: We observe excellent scaling up to 2048 tokens, after which the quadratic attention complexity becomes more significant.
+3. **Memory Usage Pattern**: Memory consumption increases linearly up to 1024 tokens, then grows more rapidly for longer sequences.
+
+<p align="center">
+  <img src="benchmark_results/cross_device/device_comparison.png" alt="EdgeFormer Cross-Device Performance" width="800">
+  <br><em>Multi-device benchmark comparisons showing tokens per second and memory usage across sequence lengths.</em>
+</p>
+
 ## 🔬 Testing and Validation Strategy
 
 Our approach to ensuring EdgeFormer meets real-world performance needs for both small startups and large-scale enterprises focuses on:
@@ -185,6 +208,10 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Added NLTK integration for advanced text analysis
 * Created `src/utils/online_training.py` for simplified on-device fine-tuning
 * Implemented `examples/simplified_online_training_demo.py` for interactive training
+* **Implemented Multi-Device Testing Framework**
+* Created `scripts/create_device_profiles.py` for device profiling
+* Implemented `scripts/cross_device_benchmark.py` for cross-device performance testing
+* Added `scripts/visualize_cross_device.py` for visualization of benchmark results
 
 **🔄 Recently Fixed:**
 
@@ -208,20 +235,29 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed Associative Memory Demo**: Updated memory methods to use `get_all_entries()` instead of `get_all_memories()`
 * **Fixed Memory Vector Generation**: Corrected `add_memory` method to properly extract hidden states
 * **Fixed Benchmark Analysis Script**: Updated string formatting to handle non-numeric duration values 
-* **Generated Initial Benchmark Results**: Created preliminary performance benchmarks showing recurrent processing advantages at 1024 tokens
+* **Generated Initial Benchmark Results**: Created initial cross-device performance benchmarks on Lenovo Yoga
 * **Added Sample Test Corpus**: Created sample text for LIMO training testing
 * **Implemented Online Training Pipeline**: Created a flexible trainer with prioritized experience replay
+* **Completed First Cross-Device Profile**: Generated first complete device profile for Lenovo Yoga
 
-**🔄 In Progress / Near-Term Focus (Phase 1):**
+**🔄 In Progress / Critical Issues (Immediate Focus):**
 
-* **Debug Associative Memory Components**: Resolve parameter naming issues in HTPSMemory and test initialization parameters
-* **Complete Benchmark Analysis**: Analyzing results from comprehensive benchmarking (Almost Completed)
-* **Fix Online Training Demo**: Adapt to work with current EdgeFormer implementation
-* **Improve Associative Memory Performance**: Optimize memory retrieval for better reasoning tasks (Medium Priority)
-* **Test LIMO Training Pipeline**: Create a curated dataset and test the training script (High Priority)
-* **Improve Attention Mechanisms Benchmarking**: Using the new research script to compare performance across different sequence lengths (Medium Priority)
-* **Extend Text Generation Capabilities**: Further improve text generation quality and diversity (Medium Priority)
-* **DirectML Exploration**: Investigating AMD GPU acceleration options via DirectML or ROCm (Medium Priority)
+* **Fix HTPSMemory Demo Parameter Issue**: The associative memory demo is calling HTPSMemory with 'embedding_dim' instead of 'hidden_size'
+* **Fix EdgeFormer Device Attribute**: Add a device property to the EdgeFormer class to fix 'no attribute device' errors
+* **Fix Symbolic Link Issues on Windows**: Replace symlinks with file copies in the OnlineTrainer for Windows compatibility
+* **Complete Initial Cross-Device Testing**: Extend device profiles to HP Envy for direct performance comparison
+* **Fix Command Line Arguments**: Update unified_features_demo.py and benchmark_all_features.py argument handling
+
+**🔄 Next Steps (Phase 1):**
+
+* **Debug Associative Memory Components**: Complete parameter naming fixes and demo compatibility
+* **Complete Benchmark Analysis**: Conduct comprehensive feature-by-feature performance analysis
+* **Fix Online Training Demo**: Fully adapt to work with current EdgeFormer implementation
+* **Improve Associative Memory Performance**: Optimize memory retrieval for better reasoning tasks
+* **Test LIMO Training Pipeline**: Test with the created curated dataset
+* **Improve Attention Mechanisms Benchmarking**: More detailed performance comparison at various sequence lengths
+* **Extend Text Generation Capabilities**: Further improve quality and diversity
+* **DirectML Exploration**: Continue investigating AMD GPU acceleration options
 
 **🔄 Future Testing & Optimization Plans (Phase 2):**
 
@@ -302,14 +338,14 @@ python examples/simplified_online_training_demo.py
 ### Testing on Multiple Devices
 
 ```bash
-# Run mobile profiling on Android device (requires connected Pixel 9)
-python scripts/profile_mobile.py --model model/edgeformer_small.bin --output_dir benchmarks/mobile
+# Create device profiles for testing
+python scripts/create_device_profiles.py --devices yoga,envy,pixel9 --output_dir profiles/
 
-# Run benchmarks comparing performance across devices
-python scripts/cross_device_benchmark.py --models model/edgeformer_small.bin,model/edgeformer_medium.bin --devices pixel9,yoga,envy
+# Run benchmarks on the current device
+python scripts/cross_device_benchmark.py --model_size small --device_profiles profiles/ --output_dir benchmark_results/cross_device/
 
 # Generate visualization for cross-device performance
-python scripts/visualize_cross_device.py --input_dir benchmarks --output_file benchmarks/device_comparison.png
+python scripts/visualize_cross_device.py --input_dir benchmark_results/cross_device/ --output_file benchmark_results/cross_device_comparison.png
 ```
 
 ### Analyzing Benchmark Results
@@ -393,74 +429,77 @@ EdgeFormer/
 └── README.md                  # Project documentation
 ```
 
-## 📝 Next Steps
+## 📝 Immediate Next Steps
 
-Now that we've implemented and tested the core features, here are the immediate next steps:
+Based on our recent testing, here are the immediate fixes and improvements needed:
 
-1. **Fix implementation issues:**
-   - Debug the HTPSMemory initialization parameters
-   - Fix device attribute check in OnlineTrainer
-   - Ensure compatibility between components
-
-2. **Complete the benchmark analysis:**
+1. **Fix HTPSMemory Demo Parameter Issue:**
    ```bash
-   # Generate a comprehensive analysis report
-   python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
-
-   # Create visualizations from benchmark data
-   python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
+   # Edit the associative memory demo
+   nano examples/htps_associative_memory_demo.py
+   ```
+   
+   Change:
+   ```python
+   self.memory = HTPSMemory(
+       capacity=args.memory_size,
+       embedding_dim=model_dim,
+       # Removed hidden_size parameter
+   )
+   ```
+   
+   To:
+   ```python
+   self.memory = HTPSMemory(
+       capacity=args.memory_size,
+       hidden_size=model_dim,  # Use hidden_size instead of embedding_dim
+       selection_strategy='htps'
+   )
    ```
 
-3. **Test LIMO training pipeline:**
+2. **Fix EdgeFormer Device Attribute:**
    ```bash
-   # Create a test dataset
-   python scripts/curate_limo_dataset.py --input_data data/test_corpus --output_dir data/limo_test --quality_threshold 0.7 --max_samples 100
-
-   # Run training
-   python examples/train_limo.py --dataset data/limo_test --model_size tiny --epochs 5 --output_dir checkpoints/limo_test
+   # Edit the EdgeFormer model class
+   nano src/model/edgeformer.py
+   ```
+   
+   Add in the class definition:
+   ```python
+   @property
+   def device(self):
+       """Return the device where the model parameters are stored."""
+       return next(self.parameters()).device
    ```
 
-4. **Expand multi-device testing:**
+3. **Fix Symbolic Link Issue on Windows:**
    ```bash
-   # Create device profiles for testing
+   # Edit the OnlineTrainer class
+   nano src/utils/online_training.py
+   ```
+   
+   Replace the symlink creation code with:
+   ```python
+   # Platform-independent file copying
+   import shutil
+   if os.path.exists(latest_path):
+       os.remove(latest_path)
+   shutil.copy2(model_path, latest_path)
+   ```
+
+4. **Create Required Directories:**
+   ```bash
+   # Create missing directories
+   mkdir -p benchmark_results/features/
+   mkdir -p checkpoints/online_test
+   mkdir -p checkpoints/online_batch_test
+   ```
+
+5. **Run Cross-Device Benchmarks on HP Envy:**
+   ```bash
+   # Run on HP Envy device
    python scripts/create_device_profiles.py --devices yoga,envy,pixel9 --output_dir profiles/
-
-   # Run initial cross-device benchmarks
    python scripts/cross_device_benchmark.py --model_size small --device_profiles profiles/ --output_dir benchmark_results/cross_device/
    ```
-
-5. **Prepare for 0.3.0 release:**
-   ```bash
-   # Update version information
-   echo "0.3.0" > VERSION
-
-   # Commit all changes
-   git add .
-   git commit -m "feat: Implement associative memory components and training pipeline
-
-   This update adds:
-   - HTPS-inspired memory storage with multiple selection strategies
-   - Attention-based memory retrieval with visualization
-   - LIMO training implementation with dataset curation
-   - Simplified online training pipeline
-   - Comprehensive benchmark analysis tools
-   - Multi-device testing framework"
-
-   # Tag the release
-   git tag -a v0.3.0 -m "Associative Memory and Training Pipeline Release"
-   ```
-
-## 📊 Latest Benchmark Results
-
-```
-Summary:
-- memory_test_budget.log: Features: budget, Avg Memory: 0.00 MB, Duration: N/A
-- memory_test_combined.log: Features: , Avg Memory: 0.00 MB, Duration: N/A
-- memory_test_kvcache.log: Features: kv_cache, Avg Memory: 0.00 MB, Duration: N/A
-- memory_test_recurrent.log: Features: recurrent, Avg Memory: 0.00 MB, Duration: N/A
-```
-
-Note: The benchmark logs were processed but appear to be in the initialization phase with no data recorded yet. Full benchmark analysis will be available soon.
 
 ## 📄 License
 

@@ -128,6 +128,11 @@ class EdgeFormerLMHead(nn.Module):
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.bias = nn.Parameter(torch.zeros(config.vocab_size))
+
+    @property
+    def device(self):
+        """Return the device where the model parameters are stored."""
+        return next(self.parameters()).device
         
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
