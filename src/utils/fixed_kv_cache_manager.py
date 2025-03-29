@@ -155,7 +155,7 @@ class KVCacheManager:
             )
             
             # Copy existing cache - fix dimensions
-            new_k[:, :self.current_seq_length] = self.gpu_cache_k[layer_idx]
+            new_k[:, :self.current_seq_length] = self.gpu_cache_k[layer_idx][:, :self.current_seq_length]
             new_v[:, :self.current_seq_length] = self.gpu_cache_v[layer_idx]
             
             # Replace cache
