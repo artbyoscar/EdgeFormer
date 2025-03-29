@@ -137,7 +137,7 @@ def generate_with_recurrent_processing(
                 # Apply iterative recurrent processing using appropriate layers from model
                 # This is a simplified version - in a full implementation, you would use
                 # dedicated recurrent modules
-                current_hidden = model.encoder.layer[-1].forward(current_hidden)[0]
+                current_hidden = model.layers[-1].forward(current_hidden)[0]
                 
                 iteration_count += 1
                 total_iterations += 1
