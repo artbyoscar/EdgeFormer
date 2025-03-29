@@ -363,10 +363,8 @@ class AssociativeMemoryDemo:
         # Initialize memory retriever - adjust parameters based on debug output
         self.retriever = MemoryRetriever(
             hidden_size=self.config.hidden_size,  # This is required
-            memory_size=256,
-            num_heads=4,
+            num_attention_heads=4,  # Use num_attention_heads instead of num_heads
             dropout=0.1
-            # Removed hidden_size parameter if not needed
         )
         
         # Create model adapter for memory integration
