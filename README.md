@@ -117,6 +117,7 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
   - Replaced symlink operations with file copies in OnlineTrainer.save_checkpoint
   - Added shutil import for cross-platform file operations
   - Fixes permission errors on Windows when creating model_latest.pt
+  - Modified readline import for Windows compatibility in the online training demo
 
 * **Enhanced Memory Component Integration**:
   - Ensured consistent parameter naming throughout memory components
@@ -136,6 +137,23 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
   - Successfully profiled HP Envy performance characteristics
   - Generated comprehensive visualization comparing device performance
   - Identified optimization opportunities for different hardware profiles
+
+### 🔧 Current Issues to Fix:
+
+* **EdgeFormer Device Attribute Missing**:
+  - Text generation in the Online Training Demo is failing with `'EdgeFormer' object has no attribute 'device'` error
+  - Need to update the EdgeFormer class to properly expose the device attribute consistently
+  - This issue affects text generation capabilities in several demos
+
+* **LIMO Training Pipeline NLTK Dependencies**:
+  - The LIMO dataset curation requires additional NLTK packages beyond 'punkt'
+  - Need to identify and install the correct NLTK dependencies (likely 'punkt_tab')
+  - Modify the curation script to handle missing dependencies more gracefully
+
+* **Unified Features Demo Text Generation Issues**:
+  - The unified features demo is generating corrupted text output
+  - May be related to tokenizer or model weight initialization
+  - Further investigation needed to determine the root cause
 
 ### 🔄 Next Steps (Phase 1):
 
@@ -208,6 +226,10 @@ pip install matplotlib seaborn pandas scikit-learn textstat nltk tqdm
 
 # Install NLTK data
 python -c "import nltk; nltk.download('punkt')"
+python -c "import nltk; nltk.download('punkt_tab')"  # For LIMO training
+
+# For Windows users, install readline alternative
+pip install pyreadline3
 ```
 
 ### Testing Associative Memory
@@ -252,43 +274,161 @@ python scripts/analyze_benchmarks.py --input_dir benchmark_results/cross_device 
 
 ## 📝 Immediate Next Steps
 
-Based on our recent fixes and testing, here are the commands to run to continue development:
+Based on recent testing results, here are the immediate tasks:
 
-1. **Test the Unified Features Demo**:
-   ```bash
-   python examples/unified_features_demo.py --visualize
+1. **Fix the EdgeFormer Device Attribute**:
+   ```python
+   # In src/model/edgeformer.py, update the EdgeFormer class:
+   
+   def __init__(self, config):
+       super().__init__()
+       # Existing code...
+       # Add this line to ensure device is always available
+       self._device = torch.device("cpu")
+   
+   @property
+   def device(self):
+       """Return the device where model parameters are stored."""
+       return next(self.parameters()).device if list(self.parameters()) else self._device
+   
+   def to(self, device):
+       """Override to method to update internal device tracker."""
+       self._device = torch.device(device) if isinstance(device, str) else device
+       return super().to(device)
    ```
 
-2. **Test the LIMO Training Pipeline**:
+2. **Create Device Optimization Utility**:
    ```bash
-   # Install NLTK data first
-   python -c "import nltk; nltk.download('punkt')"
+   # Create the device optimization module
+   python -c "import os; os.makedirs('src/utils', exist_ok=True)"
+   ```
    
-   # Create a curated dataset
-   python scripts/curate_limo_dataset.py --input_data data/test_corpus --output_dir data/limo_test --quality_threshold 0.7 --max_samples 100
+   Then create a new file `src/utils/device_optimization.py` with device detection and optimization code:
    
-   # Train a model using the LIMO approach
-   python examples/train_limo.py --dataset data/limo_test --model_size small --epochs 3 --output_dir checkpoints/limo_test
+   ```python
+   import torch
+   import platform
+   import psutil
+   
+   class DeviceOptimizer:
+       """
+       Provides device-specific optimization parameters based on hardware detection.
+       """
+       
+       def __init__(self, model_config=None):
+           self.model_config = model_config
+           self.device_info = self._detect_device()
+           self.optimization_profile = self._create_optimization_profile()
+       
+       def _detect_device(self):
+           """Detect device hardware information"""
+           device_info = {
+               "platform": platform.system(),
+               "processor": platform.processor(),
+               "python_version": platform.python_version(),
+               "torch_version": torch.__version__,
+               "cuda_available": torch.cuda.is_available(),
+               "ram_gb": psutil.virtual_memory().total / (1024**3)
+           }
+           
+           if torch.cuda.is_available():
+               device_info["gpu_name"] = torch.cuda.get_device_name(0)
+               device_info["gpu_memory_gb"] = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+           
+           return device_info
+       
+       def _create_optimization_profile(self):
+           """Create device-specific optimization parameters"""
+           profile = {
+               "attention_strategy": "standard",  # standard, mla, or hybrid
+               "attention_switch_length": 1024,   # sequence length to switch from standard to MLA
+               "max_chunk_size": 1024,            # maximum chunk size for sequence processing
+               "offload_threshold": 2048,         # sequence length to begin KV cache offloading
+               "batch_size_factor": 1.0,          # multiplication factor for batch size
+               "use_flash_attention": False       # whether to use flash attention when available
+           }
+           
+           # Adjust for detected device
+           is_low_end = False
+           
+           # Detect HP Envy or similar low-end devices
+           if not torch.cuda.is_available() and "AMD" not in self.device_info["processor"]:
+               is_low_end = True
+           
+           # Specific optimization for lower-end devices like HP Envy
+           if is_low_end:
+               profile["attention_strategy"] = "hybrid"
+               profile["attention_switch_length"] = 512  # Switch to MLA earlier
+               profile["max_chunk_size"] = 512
+               profile["offload_threshold"] = 1024
+               profile["batch_size_factor"] = 0.5
+           
+           return profile
+       
+       def get_optimal_attention_mechanism(self, seq_length):
+           """Determine optimal attention mechanism for the given sequence length"""
+           if self.optimization_profile["attention_strategy"] == "standard":
+               return "standard"
+           
+           if self.optimization_profile["attention_strategy"] == "mla":
+               return "mla"
+           
+           # For hybrid strategy, switch based on sequence length
+           if seq_length < self.optimization_profile["attention_switch_length"]:
+               return "standard"
+           else:
+               return "mla"
+       
+       def get_optimal_chunk_size(self, seq_length):
+           """Determine optimal chunk size for processing sequences"""
+           profile = self.optimization_profile
+           
+           # For short sequences, no chunking needed
+           if seq_length <= profile["max_chunk_size"]:
+               return seq_length
+           
+           # For long sequences, use the configured chunk size
+           return profile["max_chunk_size"]
+       
+       def should_offload_kv_cache(self, seq_length):
+           """Determine if KV cache should be offloaded for the given sequence length"""
+           return seq_length >= self.optimization_profile["offload_threshold"]
+       
+       def get_optimal_batch_size(self, default_batch_size):
+           """Get device-optimized batch size"""
+           return max(1, int(default_batch_size * self.optimization_profile["batch_size_factor"]))
    ```
 
-3. **Complete the Git Commit**:
+3. **Install Required NLTK Packages**:
+   ```bash
+   python -c "import nltk; nltk.download('punkt_tab')"
+   ```
+
+4. **Integrate Device Optimization into EdgeFormer**:
+   ```bash
+   # After implementing the device optimization module and fixing the device attribute,
+   # modify the model to use these optimizations
+   python examples/simplified_online_training_demo.py --device cpu --output_dir checkpoints/online_test
+   ```
+
+5. **Commit Changes**:
    ```bash
    # Add all modified files
    git add src/model/edgeformer.py
-   git add examples/htps_associative_memory_demo.py
-   git add src/utils/online_training.py
-   git add scripts/analyze_benchmarks.py
+   git add examples/simplified_online_training_demo.py
+   git add src/utils/device_optimization.py
    git add README.md
    git add benchmark_results/cross_device/device_comparison.png
    
    # Commit with a descriptive message
-   git commit -m "feat: Complete cross-device benchmarks and performance analysis
+   git commit -m "feat: Complete cross-device benchmarks and implement device-specific optimizations
 
    This commit includes:
    1. Cross-device performance comparison between Lenovo Yoga and HP Envy
-   2. Updated README with device-specific optimization insights
-   3. Fixed associative memory demo visualization
-   4. Enhanced benchmark visualization with device comparison plots"
+   2. Fixed device attribute in EdgeFormer class
+   3. Added device optimization utility for hardware-specific tuning
+   4. Updated README with comprehensive cross-device analysis
+   5. Windows compatibility improvements for interactive demos"
    ```
 
 ## 📄 License

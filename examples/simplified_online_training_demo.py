@@ -13,7 +13,10 @@ python examples/simplified_online_training_demo.py --model_path checkpoints/mode
 import os
 import sys
 import argparse
-import readline
+try:
+    import readline
+except ImportError:
+    import pyreadline3 as readline
 import time
 import logging
 from pathlib import Path

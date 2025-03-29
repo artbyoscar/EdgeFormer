@@ -132,7 +132,7 @@ class EdgeFormerLMHead(nn.Module):
     @property
     def device(self):
         """Return the device where the model parameters are stored."""
-        return next(self.parameters()).device
+        return next(self.parameters()).device if list(self.parameters()) else torch.device("cpu")
         
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
@@ -206,6 +206,24 @@ class EdgeFormer(nn.Module):
         # Initialize weights
         self.apply(self._init_weights)
         
+    # Add the device property here
+    @property
+    def device(self):
+        """Return the device where model parameters are stored."""
+        return next(self.parameters()).device if list(self.parameters()) else torch.device("cpu")
+    
+    # Add the to() method here
+    def to(self, device):
+        """Override to method to update internal device tracker."""
+        # Call the parent class implementation
+        result = super().to(device)
+        
+        # Update KV cache manager device if it exists
+        if self.kv_cache_manager:
+            self.kv_cache_manager.to(device)
+        
+        return result
+    
     def _init_weights(self, module):
         """Initialize the weights."""
         if isinstance(module, nn.Linear):
