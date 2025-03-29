@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import gc
+from src.utils.kv_cache_manager import KVCacheManager
 
 from .config import EdgeFormerConfig
 from .transformer_block import EdgeFormerBlock
@@ -27,6 +28,17 @@ class EdgeFormerEmbeddings(nn.Module):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, input_ids=None, position_ids=None, inputs_embeds=None):
+        # Initialize KV Cache Manager if needed
+        if self.kv_cache_manager is None:
+            self.kv_cache_manager = KVCacheManager(
+                max_batch_size=1,  # Adjust based on batch size
+                max_seq_length=self.config.max_position_embeddings,
+                num_layers=self.config.num_hidden_layers,
+                num_heads=self.config.num_attention_heads,
+                head_dim=self.config.hidden_size // self.config.num_attention_heads,
+                device=input_ids.device
+            )
+        
         if inputs_embeds is None:
             inputs_embeds = self.word_embeddings(input_ids)
             
@@ -165,6 +177,7 @@ class EdgeFormer(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.kv_cache_manager = None
         
         # Embeddings
         self.embeddings = EdgeFormerEmbeddings(config)
