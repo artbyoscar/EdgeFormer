@@ -2,7 +2,7 @@
 
 **EdgeFormer is a high-performance Transformer implementation optimized to run efficiently on a range of edge devices with limited compute resources. Initially focused on AMD Ryzen/Radeon systems, with active development towards broader hardware support (Intel, ARM) via advanced compiler techniques.**
 
-*(README updated: Saturday, March 29, 2025 at 02:30:00 AM PDT)*
+*(README updated: Saturday, March 29, 2025 at 11:59:59 PM PDT)*
 
 For detailed information on EdgeFormer's advanced features, see [README_features.md](README_features.md).
 
@@ -127,6 +127,12 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Added visualization generation for benchmark metrics
 * Implemented feature impact analysis across different configurations
 * Added optimal configuration detection for different use cases
+* **Implemented LIMO Training Framework**
+* Created training script for the Less-Is-More approach in `examples/train_limo.py`
+* Implemented `scripts/curate_limo_dataset.py` for high-quality dataset curation 
+* Added NLTK integration for advanced text analysis
+* Created `src/utils/online_training.py` for simplified on-device fine-tuning
+* Implemented `examples/simplified_online_training_demo.py` for interactive training
 
 **🔄 Recently Fixed:**
 
@@ -151,16 +157,19 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed Memory Vector Generation**: Corrected `add_memory` method to properly extract hidden states
 * **Fixed Benchmark Analysis Script**: Updated string formatting to handle non-numeric duration values 
 * **Generated Initial Benchmark Results**: Created preliminary performance benchmarks showing recurrent processing advantages at 1024 tokens
+* **Added Sample Test Corpus**: Created sample text for LIMO training testing
+* **Implemented Online Training Pipeline**: Created a flexible trainer with prioritized experience replay
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
+* **Debug Associative Memory Components**: Resolve parameter naming issues in HTPSMemory and test initialization parameters
 * **Complete Benchmark Analysis**: Analyzing results from comprehensive benchmarking (Almost Completed)
+* **Fix Online Training Demo**: Adapt to work with current EdgeFormer implementation
 * **Improve Associative Memory Performance**: Optimize memory retrieval for better reasoning tasks (Medium Priority)
-* **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority, Installation of nltk in progress)
-* **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities (High Priority)
-* **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths (Medium Priority)
-* **Extend Text Generation Capabilities:** Further improve text generation quality and diversity (Medium Priority)
-* **DirectML Exploration:** Investigating AMD GPU acceleration options via DirectML or ROCm (Medium Priority)
+* **Test LIMO Training Pipeline**: Create a curated dataset and test the training script (High Priority)
+* **Improve Attention Mechanisms Benchmarking**: Using the new research script to compare performance across different sequence lengths (Medium Priority)
+* **Extend Text Generation Capabilities**: Further improve text generation quality and diversity (Medium Priority)
+* **DirectML Exploration**: Investigating AMD GPU acceleration options via DirectML or ROCm (Medium Priority)
 
 ## 🛠️ Getting Started
 
@@ -178,8 +187,8 @@ source edgeformer_env/bin/activate  # On Windows: edgeformer_env\Scripts\activat
 # Install dependencies
 pip install -r requirements.txt
 
-# Install visualization dependencies
-pip install matplotlib seaborn pandas
+# Install additional dependencies for LIMO training
+pip install matplotlib seaborn pandas scikit-learn textstat nltk tqdm
 
 # For AMD GPU acceleration (optional)
 # Note: DirectML support is in progress
@@ -203,6 +212,19 @@ python examples/htps_associative_memory_demo.py --use_recurrent --use_budget --u
 python examples/htps_associative_memory_demo.py --memory_file data/knowledge_base.txt --visualize
 ```
 
+### LIMO Training
+
+```bash
+# Create a curated dataset
+python scripts/curate_limo_dataset.py --input_data data/test_corpus --output_dir data/limo_test --quality_threshold 0.7 --max_samples 100
+
+# Train a model using the LIMO approach
+python examples/train_limo.py --dataset data/limo_test --model_size small --epochs 10 --output_dir checkpoints/limo_test
+
+# Try the simplified online training demo
+python examples/simplified_online_training_demo.py
+```
+
 ### Analyzing Benchmark Results
 
 ```bash
@@ -212,8 +234,8 @@ python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file
 # Create visualizations with interactive mode
 python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
 
-# Filter outliers for cleaner analysis
-python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md --filter_outliers
+# Analyze benchmark logs
+python scripts/analyze_benchmark_logs.py --input_dir benchmark_results --output_file benchmark_summary.md
 ```
 
 ## 🧩 Project Structure
@@ -274,6 +296,7 @@ EdgeFormer/
 │   └── curate_limo_dataset.py # LIMO dataset curation script
 ├── checkpoints/               # Saved model checkpoints
 ├── data/                      # Dataset files
+│   └── test_corpus/           # Small test corpus for training
 ├── model_load_fix.py          # Model loading analysis tool
 ├── convert_model_keys.py      # Key format conversion tool
 ├── README_features.md         # Detailed documentation of advanced features
@@ -284,81 +307,48 @@ EdgeFormer/
 
 Now that we've implemented and tested the core features, here are the immediate next steps:
 
-1. **Complete the benchmark analysis (1-2 days)**
-```bash
-# Check the output directory for benchmark results
-ls -la benchmark_results
+1. **Fix implementation issues:**
+   - Debug the HTPSMemory initialization parameters
+   - Fix device attribute check in OnlineTrainer
+   - Ensure compatibility between components
 
-# Generate a comprehensive analysis report
-python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
+2. **Complete the benchmark analysis:**
+   ```bash
+   # Generate a comprehensive analysis report
+   python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
 
-# Create visualizations from benchmark data
-python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
-```
+   # Create visualizations from benchmark data
+   python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
+   ```
 
-2. **Optimize associative memory performance (2-3 days)**
-```bash
-# Profile memory retrieval performance
-python examples/test_htps_associative_memory.py --profile
+3. **Test LIMO training pipeline:**
+   ```bash
+   # Create a test dataset
+   python scripts/curate_limo_dataset.py --input_data data/test_corpus --output_dir data/limo_test --quality_threshold 0.7 --max_samples 100
 
-# Test memory integration with different configurations
-python examples/htps_associative_memory_demo.py --use_recurrent --min_iterations 2 --max_iterations 8 --convergence_threshold 0.005
+   # Run training
+   python examples/train_limo.py --dataset data/limo_test --model_size tiny --epochs 5 --output_dir checkpoints/limo_test
+   ```
 
-# Benchmark associative memory on reasoning tasks
-python examples/benchmark_all_features.py --feature memory --task reasoning --output_dir benchmark_results/memory_reasoning
-```
+4. **Prepare for 0.3.0 release:**
+   ```bash
+   # Update version information
+   echo "0.3.0" > VERSION
 
-3. **Begin LIMO training implementation (3-4 days)**
-```bash
-# Install NLTK
-pip install nltk
+   # Commit all changes
+   git add .
+   git commit -m "feat: Implement associative memory components and training pipeline
 
-# Create a small curated dataset from WikiText
-python scripts/curate_limo_dataset.py --input_data data/wikitext --output_dir data/limo_curated --quality_threshold 0.8
+   This update adds:
+   - HTPS-inspired memory storage with multiple selection strategies
+   - Attention-based memory retrieval with visualization
+   - LIMO training implementation with dataset curation
+   - Simplified online training pipeline
+   - Comprehensive benchmark analysis tools"
 
-# Test LIMO training on a small model
-python examples/train_limo.py --dataset data/limo_curated --model_size small --epochs 10 --output_dir checkpoints/limo_test
-```
-
-4. **Push changes to GitHub**
-```bash
-# Update version information
-echo "0.3.0" > VERSION
-
-# Commit all changes
-git add .
-git commit -m "feat: Implement associative memory components and benchmark analysis
-
-This update adds:
-- HTPS-inspired memory storage with multiple selection strategies
-- Attention-based memory retrieval with visualization
-- Interactive associative memory demonstration
-- Comprehensive benchmark analysis tools
-- Model adapter for seamless memory integration"
-
-# Tag the release
-git tag -a v0.3.0 -m "Associative Memory and Benchmarking Release"
-
-# Push to GitHub
-git push origin main
-git push origin v0.3.0
-```
-
-5. **Update documentation**
-```bash
-# Update API documentation
-python scripts/generate_api_docs.py --output_dir edgeformer-docs/docs/api
-
-# Update feature documentation with benchmark results
-nano edgeformer-docs/docs/features/benchmarks.md
-
-# Add associative memory documentation
-nano edgeformer-docs/docs/features/associative_memory.md
-
-# Serve the updated documentation
-cd edgeformer-docs
-mkdocs serve
-```
+   # Tag the release
+   git tag -a v0.3.0 -m "Associative Memory and Training Pipeline Release"
+   ```
 
 ## 📊 Latest Benchmark Results
 
