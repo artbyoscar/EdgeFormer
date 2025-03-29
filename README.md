@@ -1,5 +1,3 @@
-I've analyzed both documents and can provide the full updated README for the EdgeFormer project. Here's the complete content:
-
 # EdgeFormer: Efficient Transformer for Edge Devices
 
 **EdgeFormer is a high-performance Transformer implementation optimized to run efficiently on a range of edge devices with limited compute resources. Initially focused on AMD Ryzen/Radeon systems, with active development towards broader hardware support (Intel, ARM) via advanced compiler techniques.**
@@ -105,6 +103,14 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Implemented pattern recognition capabilities in the ImprovedValueEstimator
 * Created test scripts for value estimation and recurrent processing
 * Implemented `examples/value_recurrent_reasoning_demo.py` for interactive testing
+* **Implemented KV Cache RAM Offloading**
+* Created `src/utils/kv_cache_manager.py` with CPU RAM offloading support
+* Added auto-initialization in EdgeFormerEmbeddings class
+* Implemented batched transfers to minimize PCI-e bus overhead
+* **Created Unified Features Demo**
+* Implemented `examples/unified_features_demo.py` showcasing all features
+* Added visualization capabilities for recurrent processing and budget forcing
+* Created a streamlined interface for feature selection and configuration
 
 **🔄 Recently Fixed:**
 
@@ -116,22 +122,21 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed ValueEstimator Integration**: Added `kv_cache_manager` attribute initialization in EdgeFormerEmbeddings class
 * **Enhanced Recurrent Processing**: Implemented proper handling of recurrent iterations in EdgeFormer
 * **Added Visualization Support**: Created visualization capabilities for recurrent processing
+* **Fixed `kv_cache_manager` in Embeddings**: Properly initialized the attribute in the EdgeFormerEmbeddings class
+* **Fixed Recurrent Processing Layer Access**: Updated `forward_with_hidden_states` to correctly use `self.layers` instead of `self.encoder.layer`
+* **Added Comprehensive Documentation**: Created README_features.md with detailed information on advanced features
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
-* **Fix `kv_cache_manager` Issue in Embeddings**: Initialize the `kv_cache_manager` attribute in the EdgeFormerEmbeddings class to prevent the current error (Highest Priority)
-* **Test Value-Based Recurrent Processing**: Run tests with the updated implementation to verify functionality (Highest Priority)
-* **Implement Unified Demo**: Create a demo that showcases all features (KV cache management, value-based recurrent processing, and budget forcing) (High Priority)
-* **Implement KV Cache Offloading to CPU RAM:** Migrating from disk-based approach to RAM-based offloading using the KVCacheManager implementation. (High Priority)
-* **Complete FlashAttention Integration:** Finalizing compatibility with AMD hardware and optimizing performance. (High Priority)
-* **Enhance Value-Based Recurrent Depth Processing:** Further refine the value estimation component and improve the adaptive iteration policy for better task-specific performance. (High Priority)
-* **Optimize HyperTree-Enhanced Adaptive Iteration Policy:** Improve heuristics to determine optimal iteration counts and computation paths for different tasks. (High Priority)
-* **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles, focusing on quality over quantity. (High Priority)
-* **Incorporate HTPS-Enhanced Associative Memory:** Implementing dynamic knowledge retrieval and integration with intelligent selection during the inference process. (High Priority)
-* **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities based on usage patterns. (High Priority)
-* **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths. (Medium Priority)
-* **Extend Text Generation Capabilities:** Further improve text generation quality and diversity with additional sampling strategies. (Medium Priority)
-* **DirectML Exploration:** Investigating AMD GPU acceleration options via DirectML or ROCm. (Medium Priority)
+* **Benchmark Performance Across Features**: Create comprehensive benchmarks for different feature combinations (High Priority)
+* **Optimize Value-Based Recurrent Processing**: Further refine pattern recognition capabilities and adaptive iteration policies (High Priority)
+* **Complete FlashAttention Integration:** Finalizing compatibility with AMD hardware and optimizing performance (High Priority)
+* **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority)
+* **Incorporate HTPS-Enhanced Associative Memory:** Implementing dynamic knowledge retrieval with intelligent selection (High Priority)
+* **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities (High Priority)
+* **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths (Medium Priority)
+* **Extend Text Generation Capabilities:** Further improve text generation quality and diversity (Medium Priority)
+* **DirectML Exploration:** Investigating AMD GPU acceleration options via DirectML or ROCm (Medium Priority)
 
 ## 🛠️ Getting Started
 
@@ -157,7 +162,7 @@ pip install --no-cache-dir --extra-index-url https://aiinfra.pkgs.visualstudio.c
 
 ### Usage Examples
 
-#### Testing Value-Based Recurrent Depth Processing (New)
+#### Testing Value-Based Recurrent Depth Processing
 
 ```bash
 # Test value-based recurrent processing functionality
@@ -173,7 +178,7 @@ python examples/test_value_integration.py --model_type standard --sequence_lengt
 python examples/value_recurrent_reasoning_demo.py --prompt "Explain the concept of quantum entanglement in simple terms." --min_iterations 2 --max_iterations 24 --convergence_threshold 0.008 --device cpu
 ```
 
-#### Using the Unified Demo (Planned)
+#### Using the Unified Features Demo
 
 ```bash
 # Launch the unified demo with all features
@@ -181,6 +186,12 @@ python examples/unified_features_demo.py --prompt "EdgeFormer is" --max_length 1
 
 # Test with a reasoning task
 python examples/unified_features_demo.py --prompt "Solve this step by step: If a rectangle has a length of 8 meters and a width of 5 meters, what is its area and perimeter?" --max_length 200 --use_recurrent --min_iterations 2 --max_iterations 12 --convergence_threshold 0.005 --device cpu --visualize
+
+# Test with KV cache management only
+python examples/unified_features_demo.py --prompt "EdgeFormer is an efficient transformer implementation that" --max_length 100 --use_kv_cache --device cpu
+
+# Test with budget forcing only
+python examples/unified_features_demo.py --prompt "Solve this math problem step by step: 5 + 7 * 3 =" --max_length 200 --use_budget --device cpu
 ```
 
 ## 📚 Documentation
@@ -217,7 +228,7 @@ EdgeFormer/
 │       ├── long_sequence.py   # Long sequence processing utilities
 │       ├── text_dataset.py    # Dataset utilities for text processing
 │       ├── model_trainer.py   # Model training utilities
-│       ├── kv_cache.py        # KV Cache management
+│       ├── kv_cache_manager.py # KV Cache management with RAM offloading
 │       ├── htps_budget_manager.py # HyperTree-inspired budget forcing implementation
 │       ├── htps_adaptive_policy.py # HyperTree-enhanced adaptive iteration policy
 │       ├── value_estimator.py # Value estimation for recurrent depth processing
@@ -235,7 +246,8 @@ EdgeFormer/
 │   ├── enhanced_generation_demo.py # Improved text generation
 │   ├── htps_budget_forcing_demo.py # HyperTree budget forcing demonstration
 │   ├── value_recurrent_reasoning_demo.py # Value-based recurrent reasoning demo
-│   ├── unified_features_demo.py # Unified demo with all features (planned)
+│   ├── unified_features_demo.py # Unified demo with all features
+│   ├── benchmark_all_features.py # Comprehensive feature benchmarking
 │   ├── flash_attention_research.py # Attention benchmarking
 │   ├── continuous_thought_demo.py # Continuous latent reasoning
 │   ├── test_vision_transformer.py # Vision transformer testing
@@ -250,6 +262,7 @@ EdgeFormer/
 ├── data/                      # Dataset files
 ├── model_load_fix.py          # Model loading analysis tool
 ├── convert_model_keys.py      # Key format conversion tool
+├── README_features.md         # Detailed documentation of advanced features
 └── README.md                  # Project documentation
 ```
 
@@ -259,71 +272,63 @@ Based on our current development status and the recent implementation of value-b
 
 ### Immediate Next Steps (Days)
 
-1. **Fix `kv_cache_manager` Issue (Today)**
-   - Initialize the `kv_cache_manager` attribute in the EdgeFormerEmbeddings class
-   - Add a `config` field to store the configuration in the embeddings class
-   - Test with value-based recurrent processing scripts
+1. **Create Comprehensive Benchmarking (1-2 days)**
+   - Implement `examples/benchmark_all_features.py` for systematic testing
+   - Test different feature combinations across various tasks
+   - Measure memory usage, generation speed, and output quality
+   - Create visualizations for performance comparisons
 
-2. **Complete Value-Based Recurrent Processing (1-2 days)**
-   - Test the updated implementation thoroughly
-   - Fine-tune convergence detection parameters
-   - Create comprehensive documentation
+2. **Begin HTPS-Enhanced Associative Memory Implementation (2-3 days)**
+   - Create directory structure for associative memory components
+   - Implement basic memory storage and retrieval mechanisms
+   - Design HTPS-inspired selection strategies
+   - Create simple demonstration script
 
-3. **Implement Unified Demo (2-3 days)**
-   - Create a demo that showcases all implemented features
-   - Implement visualization capabilities for all features
-   - Create a streamlined interface for feature selection
-
-4. **Push Changes to GitHub (1 day)**
+3. **Push Changes to GitHub (1 day)**
    - Commit all changes with descriptive commit messages
-   - Update README with latest progress
+   - Tag the release as v0.3.0
+   - Update project documentation
    - Verify functionality across different environments
 
 ### Short-Term Focus (1-2 Weeks)
 
-1. **Finalize Value-Based Recurrent Depth Processing (3-4 days)**
-   - Optimize pattern recognition capabilities
-   - Fine-tune adaptive iteration policy
-   - Create comprehensive benchmarks for different tasks
-   - Document best practices
+1. **Optimize Value-Based Recurrent Depth Processing (3-4 days)**
+   - Fine-tune pattern recognition capabilities
+   - Improve adaptive iteration policy heuristics
+   - Create task-specific configurations
+   - Document best practices for different use cases
 
-2. **Implement KV Cache Offloading to CPU RAM (3-5 days)**
-   - Create efficient RAM-based offloading mechanism
-   - Implement automatic thresholds for offloading
-   - Benchmark performance improvements
-   - Create documentation and usage examples
+2. **Implement LIMO's Quality-Focused Training (4-6 days)**
+   - Create dataset curation scripts
+   - Implement quality metrics for training data
+   - Design LIMO-based training pipeline
+   - Compare performance against larger training datasets
 
-3. **Integrate HTPS-Enhanced Memory Components (4-6 days)**
-   - Implement associative memory mechanisms
-   - Create selection strategies for memory retrieval
-   - Optimize for minimal computational overhead
-   - Benchmark performance on reasoning tasks
-
-4. **Enhance Documentation (2-3 days)**
-   - Update README_features.md with detailed information
-   - Create comprehensive API documentation
-   - Add usage examples for all major features
-   - Update MkDocs website with visualizations
+3. **Enhance Documentation (2-3 days)**
+   - Update API documentation
+   - Create usage tutorials for each feature
+   - Add visualization examples to documentation
+   - Update MkDocs website with new content
 
 ### Medium-Term Focus (2-4 Weeks)
 
-1. **Implement LIMO's Quality-Focused Training (1-2 weeks)**
-   - Create curated training datasets
-   - Implement LIMO-based training pipeline
-   - Benchmark against models trained on larger datasets
-   - Document guidelines for dataset curation
-
-2. **Complete FlashAttention Integration (1-2 weeks)**
+1. **Complete FlashAttention Integration (1-2 weeks)**
    - Finalize AMD hardware compatibility
    - Optimize for different sequence lengths
    - Create comprehensive benchmarks
    - Document best practices for different hardware
 
-3. **Develop Simplified Online Training (1-2 weeks)**
-   - Create lightweight fine-tuning pipeline
+2. **Develop Simplified Online Training Pipeline (1-2 weeks)**
+   - Create lightweight fine-tuning mechanisms
    - Implement usage-based adaptation strategies
+   - Design efficient parameter updates
    - Benchmark domain-specific performance improvements
-   - Create documentation and examples
+
+3. **Begin Continuous Latent Reasoning Implementation (2-3 weeks)**
+   - Research Chain of Continuous Thought approach
+   - Design integration with existing value-based processing
+   - Create prototype implementation
+   - Benchmark on complex reasoning tasks
 
 ## 📄 License
 
