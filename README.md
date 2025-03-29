@@ -2,7 +2,7 @@
 
 **EdgeFormer is a high-performance Transformer implementation optimized to run efficiently on a range of edge devices with limited compute resources. Initially focused on AMD Ryzen/Radeon systems, with active development towards broader hardware support (Intel, ARM) via advanced compiler techniques.**
 
-*(README updated: Saturday, March 29, 2025 at 11:59:59 PM PDT)*
+*(README updated: Saturday, March 29, 2025)*
 
 For detailed information on EdgeFormer's advanced features, see [README_features.md](README_features.md).
 
@@ -54,7 +54,7 @@ EdgeFormer aims to provide best-in-class performance and efficiency for Transfor
 
 ## 📈 Latest Benchmark Results
 
-Our most recent benchmarks on the Lenovo Yoga (AMD Ryzen) with the small model configuration show:
+### Lenovo Yoga (AMD Ryzen) Results:
 
 | Sequence Length | Tokens/Second | Inference Time (s) | Memory Usage (MB) |
 |-----------------|---------------|-------------------|-------------------|
@@ -64,11 +64,39 @@ Our most recent benchmarks on the Lenovo Yoga (AMD Ryzen) with the small model c
 | 2048            | 2196.98       | 0.93              | 874.09            |
 | 4096            | 1393.85       | 2.94              | 1688.64           |
 
-These results highlight several performance characteristics:
+### HP Envy Results:
 
-1. **Optimal Performance Range**: The model achieves peak efficiency around 1024-2048 tokens, reaching over 2200 tokens per second.
-2. **Performance Scaling**: We observe excellent scaling up to 2048 tokens, after which the quadratic attention complexity becomes more significant.
-3. **Memory Usage Pattern**: Memory consumption increases linearly up to 1024 tokens, then grows more rapidly for longer sequences.
+| Sequence Length | Tokens/Second | Inference Time (s) | Memory Usage (MB) |
+|-----------------|---------------|-------------------|-------------------|
+| 128             | 294.66        | 0.43              | 309.09            |
+| 512             | 917.74        | 0.56              | 425.81            |
+| 1024            | 969.90        | 1.06              | 586.45            |
+| 2048            | 829.89        | 2.47              | 852.20            |
+| 4096            | 360.68        | 11.36             | 883.39            |
+
+### Cross-Device Performance Analysis:
+
+The benchmark results reveal several important insights for optimizing EdgeFormer across different hardware:
+
+1. **Device-Specific Performance Characteristics**:
+   - The AMD Ryzen (Yoga) shows 2.3x better throughput than the HP Envy at the optimal 1024 token range
+   - The performance gap widens at longer sequence lengths (3.9x difference at 4096 tokens)
+   - Memory usage patterns are similar between devices, suggesting efficient memory management across platforms
+
+2. **Optimization Opportunities**:
+   - **Device-Aware Kernel Selection**: Implement dynamic kernel selection based on detected hardware to optimize attention computation
+   - **Adaptive Batch Sizing**: Adjust batch sizes automatically based on detected device capabilities
+   - **Memory-CPU Bandwidth Awareness**: Modify KV cache offloading strategies based on the specific RAM bandwidth of the device
+   - **Sequence Length Optimization**: For HP Envy, consider more aggressive sequence chunking at lengths above 1024 tokens
+   - **Optimization for Low-End Devices**: Implement an "ultra-efficiency" mode for devices with performance profiles similar to the HP Envy
+   - **Workload Distribution**: For multi-model scenarios, distribute workloads preferentially to devices with higher tokens/second ratings
+
+3. **Performance Bottlenecks**:
+   - Both devices show significant performance degradation at 4096 tokens, but the HP Envy degrades much more severely
+   - The HP Envy shows better memory efficiency at 128 tokens but matches the Yoga's memory usage at higher sequence lengths
+   - The optimal sequence length for both devices appears to be 1024 tokens, suggesting attention quadratic complexity dominates costs beyond this point
+
+These insights will guide our optimization efforts in the upcoming development phase, with a focus on device-specific adaptation for more consistent performance across hardware platforms.
 
 ## 🏆 Project Status
 
@@ -104,12 +132,18 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
   - Added support for mixed data formats
   - Enhanced visualization of benchmark results
 
+* **Completed Cross-Device Benchmark Testing**:
+  - Successfully profiled HP Envy performance characteristics
+  - Generated comprehensive visualization comparing device performance
+  - Identified optimization opportunities for different hardware profiles
+
 ### 🔄 Next Steps (Phase 1):
 
-* **Complete Cross-Device Testing**:
-  - Extend device profiles to HP Envy for direct performance comparison
-  - Analyze benchmark results across different hardware
-  - Optimize for device-specific performance characteristics
+* **Implement Device-Specific Optimizations**:
+  - Create device-specific configurations for optimal performance
+  - Add dynamic kernel selection based on detected hardware
+  - Implement adaptive batch sizes for different device capabilities
+  - Optimize KV cache management for devices with lower memory bandwidth
 
 * **Enhance Associative Memory Performance**:
   - Fine-tune memory retrieval mechanisms for better reasoning tasks
@@ -171,6 +205,9 @@ pip install -r requirements.txt
 
 # Install additional dependencies for LIMO training
 pip install matplotlib seaborn pandas scikit-learn textstat nltk tqdm
+
+# Install NLTK data
+python -c "import nltk; nltk.download('punkt')"
 ```
 
 ### Testing Associative Memory
@@ -197,20 +234,20 @@ python examples/simplified_online_training_demo.py --batch --input_file data/tes
 
 ```bash
 # Create device profiles for testing
-python scripts/create_device_profiles.py --devices yoga,envy,pixel9 --output_dir profiles/
+python scripts/create_device_profiles.py --devices yoga,envy --output_dir profiles/
 
 # Run benchmarks on the current device
 python scripts/cross_device_benchmark.py --model_size small --device_profiles profiles/ --output_dir benchmark_results/cross_device/
 
 # Generate visualization for cross-device performance
-python scripts/visualize_cross_device.py --input_dir benchmark_results/cross_device/ --output_file benchmark_results/cross_device_comparison.png
+python scripts/visualize_cross_device.py --input_dir benchmark_results/cross_device/ --output_file benchmark_results/cross_device/device_comparison.png
 ```
 
 ### Analyzing Benchmark Results
 
 ```bash
 # Generate a comprehensive benchmark analysis
-python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
+python scripts/analyze_benchmarks.py --input_dir benchmark_results/cross_device --output_dir benchmark_results/analysis --interactive
 ```
 
 ## 📝 Immediate Next Steps
@@ -222,32 +259,19 @@ Based on our recent fixes and testing, here are the commands to run to continue 
    python examples/unified_features_demo.py --visualize
    ```
 
-2. **Continue Cross-Device Testing with HP Envy**:
+2. **Test the LIMO Training Pipeline**:
    ```bash
-   # First make sure the device profiles directory exists
-   mkdir -p profiles
-   
-   # Create a device profile for the HP Envy
-   python scripts/create_device_profiles.py --devices envy --output_dir profiles/
-   
-   # Run benchmarks on the HP Envy
-   python scripts/cross_device_benchmark.py --model_size small --device_profiles profiles/ --output_dir benchmark_results/cross_device/
-   ```
-
-3. **Test the LIMO Training Pipeline**:
-   ```bash
-   # Create a sample text file for testing if you don't have one
-   mkdir -p data/test_corpus
-   echo "EdgeFormer is an efficient transformer model for edge devices." > data/test_corpus/sample.txt
+   # Install NLTK data first
+   python -c "import nltk; nltk.download('punkt')"
    
    # Create a curated dataset
    python scripts/curate_limo_dataset.py --input_data data/test_corpus --output_dir data/limo_test --quality_threshold 0.7 --max_samples 100
    
    # Train a model using the LIMO approach
-   python examples/train_limo.py --dataset data/limo_test --model_size small --epochs 10 --output_dir checkpoints/limo_test
+   python examples/train_limo.py --dataset data/limo_test --model_size small --epochs 3 --output_dir checkpoints/limo_test
    ```
 
-4. **Complete the Git Commit**:
+3. **Complete the Git Commit**:
    ```bash
    # Add all modified files
    git add src/model/edgeformer.py
@@ -255,27 +279,17 @@ Based on our recent fixes and testing, here are the commands to run to continue 
    git add src/utils/online_training.py
    git add scripts/analyze_benchmarks.py
    git add README.md
+   git add benchmark_results/cross_device/device_comparison.png
    
    # Commit with a descriptive message
-   git commit -m "fix: Resolve critical associative memory and online training issues
+   git commit -m "feat: Complete cross-device benchmarks and performance analysis
 
-   This commit addresses several critical bugs that were preventing the proper functioning of 
-   the associative memory components and online training pipeline:
-
-   1. Fixed EdgeFormer device property
-   2. Fixed HTPSMemory parameter naming
-   3. Improved Windows compatibility with file operations
-   4. Enhanced memory component integration
-   5. Optimized device handling in online training
-   6. Fixed benchmark analysis script"
+   This commit includes:
+   1. Cross-device performance comparison between Lenovo Yoga and HP Envy
+   2. Updated README with device-specific optimization insights
+   3. Fixed associative memory demo visualization
+   4. Enhanced benchmark visualization with device comparison plots"
    ```
-
-5. **Future Code Improvements to Consider**:
-   - Add more robust error handling in the memory components
-   - Optimize MLA implementation for shorter sequence lengths
-   - Implement more sophisticated memory retrieval strategies
-   - Enhance the benchmark analysis script for feature-specific performance insights
-   - Improve the LIMO dataset curation with more advanced text quality metrics
 
 ## 📄 License
 
