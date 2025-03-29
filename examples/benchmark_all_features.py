@@ -151,7 +151,7 @@ def run_benchmark(args):
                 budget_manager = None
                 if features["budget"]:
                     budget_manager = HTPSBudgetManager(
-                        max_budget_tokens=args.max_budget_tokens,
+                        budget_tokens=args.max_budget_tokens,
                         max_thinking_extensions=args.extensions,
                         extension_token="Wait",
                         confidence_threshold=0.9,
