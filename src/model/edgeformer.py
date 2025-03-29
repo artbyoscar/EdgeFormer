@@ -533,7 +533,35 @@ class EdgeFormer(nn.Module):
 
         return extended_attention_mask
 
-
+    def forward_with_hidden_states(self, input_ids, attention_mask=None):
+        """Forward pass that returns both logits and hidden states for recurrent processing.
+    
+        Args:
+            input_ids: Input token IDs
+            attention_mask: Optional attention mask
+        
+        Returns:
+            tuple: (logits, hidden_states)
+        """
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids)
+        
+        # Get embeddings
+        embeddings = self.embeddings(input_ids)
+    
+        # Initialize hidden states list to store intermediate values
+        all_hidden_states = [embeddings]
+    
+        # Pass through encoder layers
+        hidden_states = embeddings
+        for layer in self.encoder.layer:
+            hidden_states = layer(hidden_states, attention_mask)[0]
+            all_hidden_states.append(hidden_states)
+    
+        # Get logits from final hidden states
+        logits = self.lm_head(hidden_states)
+    
+        return logits, all_hidden_states
   
     def generate(
         self,

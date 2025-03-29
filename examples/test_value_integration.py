@@ -1,85 +1,113 @@
-"""
-Test script for Value Estimator integration with EdgeFormer.
-"""
+import argparse
 import torch
+import logging
 import sys
 import os
-import argparse
 
-# Add project root to path
+# Add parent directory to path to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.model.edgeformer import EdgeFormer
-from src.model.config import EdgeFormerConfig
-from src.utils.value_estimator import ValueEstimator
+from src.model.edgeformer import EdgeFormer, EdgeFormerConfig
+from src.utils.improved_value_estimator import ImprovedValueEstimator
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Test Value Estimator integration")
-    parser.add_argument("--hidden_size", type=int, default=128, help="Hidden size")
-    parser.add_argument("--iterations", type=int, default=5, help="Number of recurrent iterations")
-    return parser.parse_args()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
 
-def main():
-    args = parse_args()
-    print(f"Testing Value Estimator integration with {args.iterations} iterations")
+logger = logging.getLogger('edgeformer')
+logger.info('Starting EdgeFormer test...')
+
+def test_value_integration(args):
+    """Test integration of Value Estimator with EdgeFormer"""
     
-    # Create a small config for testing
+    # Create a small model for testing
     config = EdgeFormerConfig(
         vocab_size=1000,
         hidden_size=args.hidden_size,
-        num_hidden_layers=2,
+        num_hidden_layers=4,
         num_attention_heads=4,
-        intermediate_size=args.hidden_size * 4
+        intermediate_size=args.hidden_size * 2,
+        max_position_embeddings=512,
+        attention_type=args.model_type
     )
     
-    # Create model
     model = EdgeFormer(config)
+    model.to(args.device)
     
-    # Create value estimator
-    value_estimator = ValueEstimator(config.hidden_size, config)
-    
-    # Set value estimator in model
-    model.set_value_estimator(value_estimator)
+    # Create a value estimator
+    value_estimator = ImprovedValueEstimator(config.hidden_size, config)
+    value_estimator.to(args.device)
     
     # Generate random input
-    input_ids = torch.randint(0, 1000, (1, 10))
+    input_ids = torch.randint(0, 1000, (1, args.sequence_length), device=args.device)
     
-    # Initial forward pass
-    with torch.no_grad():
-        outputs = model.forward_with_hidden_states(
-            input_ids=input_ids,
-            return_hidden_states=True
+    # Forward pass with hidden states
+    logger.info(f"Running forward pass on sequence of length {args.sequence_length}...")
+    logits, hidden_states = model.forward_with_hidden_states(input_ids)
+    
+    # Test value estimation
+    logger.info("Testing value estimation...")
+    for i, hidden_state in enumerate(hidden_states):
+        value = value_estimator(hidden_state).mean().item()
+        logger.info(f"Layer {i} hidden state value: {value:.4f}")
+    
+    # Test convergence detection
+    logger.info("Testing convergence detection with recurrent processing...")
+    
+    # Reset value estimator
+    value_estimator.reset()
+    
+    # Get last hidden state
+    last_hidden = hidden_states[-1][:, -1:, :]
+    current_hidden = last_hidden.clone()
+    
+    # Simulate recurrent processing
+    for i in range(args.max_iterations):
+        # Estimate value
+        value = value_estimator(current_hidden).mean().item()
+        
+        # Check convergence
+        should_continue = value_estimator.should_continue_iteration(
+            current_hidden, 
+            i, 
+            args.min_iterations, 
+            args.max_iterations
         )
-        logits, hidden_states = outputs
-    
-    print(f"Initial hidden states shape: {hidden_states.shape}")
-    print(f"Initial logits shape: {logits.shape}")
-    
-    # Test recurrent processing
-    values = []
-    for i in range(args.iterations):
-        with torch.no_grad():
-            # Forward pass with existing hidden states
-            outputs = model.forward_with_hidden_states(
-                hidden_states=hidden_states,
-                return_hidden_states=True
-            )
-            logits, hidden_states = outputs
+        
+        logger.info(f"Iteration {i+1}: value = {value:.4f}, continue = {should_continue}")
+        
+        if not should_continue:
+            logger.info(f"Converged after {i+1} iterations")
+            break
             
-            # Get value estimate
-            value = value_estimator(hidden_states).item()
-            values.append(value)
-            
-            print(f"Iteration {i+1}: Value = {value:.4f}")
-            
-            # Check for convergence
-            if value_estimator.check_convergence(hidden_states):
-                print(f"Converged at iteration {i+1}")
-                break
+        # Apply recurrent processing using the last transformer layer
+        current_hidden = model.encoder.layer[-1].forward(current_hidden)[0]
     
-    print(f"Final hidden states shape: {hidden_states.shape}")
-    print(f"Final logits shape: {logits.shape}")
-    print(f"Value history: {values}")
+    logger.info("Value integration test completed successfully!")
+
+def main():
+    parser = argparse.ArgumentParser(description='Test Value Integration with EdgeFormer')
+    parser.add_argument('--hidden_size', type=int, default=256,
+                        help='Hidden state size')
+    parser.add_argument('--model_type', type=str, default='mla',
+                        choices=['standard', 'mla', 'mla_window'],
+                        help='Attention type')
+    parser.add_argument('--sequence_length', type=int, default=128,
+                        help='Input sequence length')
+    parser.add_argument('--min_iterations', type=int, default=2,
+                        help='Minimum iterations for convergence test')
+    parser.add_argument('--max_iterations', type=int, default=10,
+                        help='Maximum iterations for convergence test')
+    parser.add_argument('--convergence_threshold', type=float, default=0.005,
+                        help='Convergence threshold')
+    parser.add_argument('--device', type=str, default='cpu',
+                        help='Device to run on (cpu/cuda)')
+    
+    args = parser.parse_args()
+    test_value_integration(args)
 
 if __name__ == "__main__":
     main()
