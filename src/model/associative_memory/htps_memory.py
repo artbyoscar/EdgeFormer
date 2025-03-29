@@ -13,7 +13,7 @@ class HTPSMemory:
     to retain and retrieve.
     """
     
-    def __init__(self, capacity=100, embedding_dim=768, selection_strategy='htps'):
+    def __init__(self, capacity=100, hidden_size=768, selection_strategy='htps'):
         """
         Initialize the memory storage.
         
@@ -24,7 +24,7 @@ class HTPSMemory:
                 Options: 'importance', 'recency', 'frequency', 'htps'
         """
         self.capacity = capacity
-        self.embedding_dim = embedding_dim
+        self.embedding_dim = hidden_size  # Store the hidden_size as embedding_dim
         self.selection_strategy = selection_strategy
         
         # Storage for memory entries

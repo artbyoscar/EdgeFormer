@@ -98,9 +98,9 @@ class OnlineTrainer:
         if self.device == 'auto':
             self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
-        # Move model to device if needed
-        if self.model.device != self.device:
-            self.model.to(self.device)
+        # To this (which handles the device attribute properly)
+        self.device = torch.device(self.device)
+        self.model = self.model.to(self.device)
         
         # Initialize optimizer
         self.optimizer = AdamW(

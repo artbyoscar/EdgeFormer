@@ -135,39 +135,39 @@ class MemoryRetriever(nn.Module):
     Neural network module for retrieving and integrating information from associative memory.
     Implements attention-based memory retrieval with HTPS-inspired selection mechanisms.
     """
-    def __init__(self, hidden_size, memory_size=256, num_heads=4, dropout=0.1):
+    def __init__(self, hidden_size, num_attention_heads=4, dropout=0.1):
         super().__init__()
         self.hidden_size = hidden_size
-        self.memory_size = memory_size
-        self.num_heads = num_heads
+        self.memory_size = hidden_size  # Use hidden_size as memory_size
+        self.num_heads = num_attention_heads  # Rename parameter
         
         # Query projection
-        self.query_proj = nn.Linear(hidden_size, memory_size)
+        self.query_proj = nn.Linear(hidden_size, self.memory_size)  # Use self.memory_size
         
         # Multi-head attention for memory retrieval
         self.mem_attention = nn.MultiheadAttention(
-            embed_dim=memory_size,
-            num_heads=num_heads,
+            embed_dim=self.memory_size,  # Use self.memory_size
+            num_heads=self.num_heads,  # Use self.num_heads
             dropout=dropout,
             batch_first=True
         )
         
         # Gating mechanism to control memory integration
         self.gate = nn.Sequential(
-            nn.Linear(hidden_size + memory_size, hidden_size),
+            nn.Linear(hidden_size + self.memory_size, hidden_size),
             nn.Sigmoid()
         )
         
         # Memory integration layers
         self.integration = nn.Sequential(
-            nn.Linear(hidden_size + memory_size, hidden_size * 2),
+            nn.Linear(hidden_size + self.memory_size, hidden_size * 2),
             nn.LayerNorm(hidden_size * 2),
             nn.GELU(),
             nn.Linear(hidden_size * 2, hidden_size)
         )
         
         # Layer normalization
-        self.layer_norm1 = nn.LayerNorm(memory_size)
+        self.layer_norm1 = nn.LayerNorm(self.memory_size)
         self.layer_norm2 = nn.LayerNorm(hidden_size)
         
         # Selection strategy parameters
@@ -189,7 +189,8 @@ class MemoryRetriever(nn.Module):
             memory_values: List of corresponding values
             memory_scores: Scores for each memory item based on selection strategy
         """
-        if not hasattr(memory, 'memory_keys') or not memory.memory_keys or len(memory.memory_keys) == 0:
+        # Check if memory is empty
+        if not memory.embeddings or len(memory.embeddings) == 0:
             # Return empty tensors if memory is empty
             return (
                 torch.zeros((0, self.memory_size), device=self.query_proj.weight.device),
@@ -199,56 +200,52 @@ class MemoryRetriever(nn.Module):
             
         # Convert memory keys to tensor
         mem_keys = []
-        for key in memory.memory_keys:
-            if isinstance(key, torch.Tensor):
-                mem_keys.append(key.to(self.query_proj.weight.device))
+        for emb in memory.embeddings:
+            if isinstance(emb, torch.Tensor):
+                mem_keys.append(emb.to(self.query_proj.weight.device))
             else:
-                mem_keys.append(torch.tensor(key, device=self.query_proj.weight.device))
+                mem_keys.append(torch.tensor(emb, device=self.query_proj.weight.device))
                 
         mem_keys_tensor = torch.stack(mem_keys)
+
+        # Extract metadata for scoring based on HTPSMemory structure
+        importance_scores = [meta['importance'] for meta in memory.metadata]
+        recency_scores = [meta['recency'] for meta in memory.metadata]
+        access_counts = [meta['access_count'] for meta in memory.metadata]
         
         # Compute selection scores based on strategy
         if selection_strategy == "importance":
-            importance_scores = torch.tensor(memory.importance_scores, device=mem_keys_tensor.device)
-            selection_scores = importance_scores
+            selection_scores = torch.tensor(importance_scores, device=mem_keys_tensor.device)
         elif selection_strategy == "recency":
-            max_time = float(memory.current_time) or 1.0
-            recency_scores = torch.tensor([
-                1.0 - (memory.current_time - t) / max_time for t in memory.last_access_time
-            ], device=mem_keys_tensor.device)
-            selection_scores = recency_scores
+            selection_scores = torch.tensor(recency_scores, device=mem_keys_tensor.device)
         elif selection_strategy == "frequency":
-            max_count = max(memory.access_counts) if memory.access_counts else 1
-            frequency_scores = torch.tensor([
-                count / max_count for count in memory.access_counts
-            ], device=mem_keys_tensor.device)
-            selection_scores = frequency_scores
+            max_count = max(access_counts) if access_counts else 1
+            frequency_scores = [count / max_count for count in access_counts]
+            selection_scores = torch.tensor(frequency_scores, device=mem_keys_tensor.device)
         elif selection_strategy == "htps":
             # Normalized strategy weights using softmax
             strategy_weights = F.softmax(self.selection_params, dim=0)
             
-            # Compute individual scores
-            max_time = float(memory.current_time) or 1.0
-            importance_scores = torch.tensor(memory.importance_scores, device=mem_keys_tensor.device)
-            recency_scores = torch.tensor([
-                1.0 - (memory.current_time - t) / max_time for t in memory.last_access_time
-            ], device=mem_keys_tensor.device)
-            max_count = max(memory.access_counts) if memory.access_counts else 1
-            frequency_scores = torch.tensor([
-                count / max_count for count in memory.access_counts
-            ], device=mem_keys_tensor.device)
+            # Normalize scores
+            max_count = max(access_counts) if access_counts else 1
+            normalized_frequencies = [count / max_count for count in access_counts]
             
             # Combine scores using learned weights
-            selection_scores = (
-                strategy_weights[0] * importance_scores +
-                strategy_weights[1] * recency_scores +
-                strategy_weights[2] * frequency_scores
-            )
+            combined_scores = []
+            for imp, rec, freq in zip(importance_scores, recency_scores, normalized_frequencies):
+                score = (
+                    strategy_weights[0] * imp +
+                    strategy_weights[1] * rec +
+                    strategy_weights[2] * freq
+                )
+                combined_scores.append(score)
+        
+            selection_scores = torch.tensor(combined_scores, device=mem_keys_tensor.device)
         else:
             # Default: uniform scores
             selection_scores = torch.ones(len(mem_keys_tensor), device=mem_keys_tensor.device)
             
-        return mem_keys_tensor, memory.memory_values, selection_scores
+        return mem_keys_tensor, memory.texts, selection_scores  # Return texts instead of memory_values
         
     def forward(self, query_hidden, memory, top_k=None, selection_strategy="htps"):
         """
