@@ -356,18 +356,15 @@ class AssociativeMemoryDemo:
         # Initialize associative memory
         self.memory = HTPSMemory(
             capacity=args.memory_size,  # Using capacity instead of memory_size
-            embedding_dim=self.config.hidden_size,
-            selection_strategy=args.memory_strategy
-            # Removed hidden_size parameter
+            hidden_size=self.config.hidden_size,  # Use the model's hidden size from config
+            selection_strategy='htps'
         )
         
         # Initialize memory retriever - adjust parameters based on debug output
         self.retriever = MemoryRetriever(
             hidden_size=self.config.hidden_size,  # This is required
-            memory_size=256,
-            num_heads=4,
+            num_attention_heads=4,  # Use num_attention_heads instead of num_heads
             dropout=0.1
-            # Removed hidden_size parameter if not needed
         )
         
         # Create model adapter for memory integration
