@@ -1,7 +1,135 @@
+"""
+HTPS-Enhanced Associative Memory - Memory Retriever Implementation
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class AttentionBasedRetriever(nn.Module):
+    """
+    Attention-based memory retriever that integrates retrieved memories 
+    with the current model state through an attention mechanism.
+    """
+    
+    def __init__(self, model_dim=768, num_heads=4, dropout=0.1, temperature=1.0, use_gating=True):
+        """
+        Initialize the attention-based memory retriever.
+        
+        Args:
+            model_dim (int): Dimension of the model embeddings
+            num_heads (int): Number of attention heads
+            dropout (float): Dropout probability
+            temperature (float): Temperature for attention softmax
+            use_gating (bool): Whether to use a gating mechanism
+        """
+        super().__init__()
+        
+        self.model_dim = model_dim
+        self.num_heads = num_heads
+        self.head_dim = model_dim // num_heads
+        self.temperature = temperature
+        self.use_gating = use_gating
+        
+        assert self.head_dim * num_heads == model_dim, "model_dim must be divisible by num_heads"
+        
+        # Query, key, value projections
+        self.q_proj = nn.Linear(model_dim, model_dim)
+        self.k_proj = nn.Linear(model_dim, model_dim)
+        self.v_proj = nn.Linear(model_dim, model_dim)
+        
+        # Output projection
+        self.out_proj = nn.Linear(model_dim, model_dim)
+        
+        # Gating mechanism
+        if use_gating:
+            self.gate = nn.Linear(model_dim * 2, model_dim)
+        
+        # Dropout
+        self.dropout = nn.Dropout(dropout)
+        
+        # For visualization
+        self.last_attention_weights = None
+    
+    def forward(self, query_hidden_states, memory_embeddings, memory_scores=None):
+        """
+        Retrieve and integrate memories with the current hidden states.
+        
+        Args:
+            query_hidden_states (torch.Tensor): Hidden states from the model [batch, seq_len, hidden_dim]
+            memory_embeddings (torch.Tensor): Retrieved memory embeddings [batch, num_memories, hidden_dim]
+            memory_scores (torch.Tensor, optional): Scores for each memory [batch, num_memories]
+            
+        Returns:
+            torch.Tensor: Updated hidden states with memory integration
+        """
+        # Handle empty memory case
+        if memory_embeddings.shape[1] == 0:
+            return query_hidden_states
+        
+        batch_size, seq_len, _ = query_hidden_states.shape
+        num_memories = memory_embeddings.shape[1]
+        
+        # Project query, key, value
+        q = self.q_proj(query_hidden_states)
+        k = self.k_proj(memory_embeddings)
+        v = self.v_proj(memory_embeddings)
+        
+        # Reshape for multi-head attention
+        q = q.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = k.view(batch_size, num_memories, self.num_heads, self.head_dim).transpose(1, 2)
+        v = v.view(batch_size, num_memories, self.num_heads, self.head_dim).transpose(1, 2)
+        
+        # Scale query
+        q = q / (self.head_dim ** 0.5)
+        
+        # Calculate attention scores
+        attention_scores = torch.matmul(q, k.transpose(-2, -1))
+        
+        # Apply temperature
+        attention_scores = attention_scores / self.temperature
+        
+        # Incorporate memory scores if provided
+        if memory_scores is not None:
+            # Reshape scores to add to attention
+            reshaped_scores = memory_scores.unsqueeze(1).unsqueeze(2).expand(-1, self.num_heads, seq_len, -1)
+            attention_scores = attention_scores + reshaped_scores
+        
+        # Apply softmax
+        attention_weights = F.softmax(attention_scores, dim=-1)
+        attention_weights = self.dropout(attention_weights)
+        
+        # Store for visualization
+        self.last_attention_weights = attention_weights.detach().mean(dim=1)
+        
+        # Apply attention
+        attention_output = torch.matmul(attention_weights, v)
+        
+        # Reshape back
+        attention_output = attention_output.transpose(1, 2).contiguous().view(
+            batch_size, seq_len, self.model_dim
+        )
+        
+        # Output projection
+        attention_output = self.out_proj(attention_output)
+        
+        # Apply gating if enabled
+        if self.use_gating:
+            # Concatenate original and memory-enhanced states
+            concat = torch.cat([query_hidden_states, attention_output], dim=-1)
+            
+            # Calculate gate values
+            gate_values = torch.sigmoid(self.gate(concat))
+            
+            # Apply gate
+            output = gate_values * attention_output + (1 - gate_values) * query_hidden_states
+        else:
+            # Simple residual connection
+            output = query_hidden_states + attention_output
+        
+        return output
+
+# Keep the original MemoryRetriever class for backward compatibility
 class MemoryRetriever(nn.Module):
     """
     Neural network module for retrieving and integrating information from associative memory.
@@ -45,6 +173,9 @@ class MemoryRetriever(nn.Module):
         # Selection strategy parameters
         self.selection_params = nn.Parameter(torch.ones(3) / 3)  # Equal weights initially
         
+        # For visualization
+        self.last_attention_weights = None
+        
     def create_memory_embeddings(self, memory, selection_strategy="htps"):
         """
         Create embeddings from memory items for attention-based retrieval.
@@ -58,7 +189,7 @@ class MemoryRetriever(nn.Module):
             memory_values: List of corresponding values
             memory_scores: Scores for each memory item based on selection strategy
         """
-        if not memory.memory_keys or len(memory.memory_keys) == 0:
+        if not hasattr(memory, 'memory_keys') or not memory.memory_keys or len(memory.memory_keys) == 0:
             # Return empty tensors if memory is empty
             return (
                 torch.zeros((0, self.memory_size), device=self.query_proj.weight.device),
@@ -166,6 +297,7 @@ class MemoryRetriever(nn.Module):
         
         # For each position in the sequence, retrieve relevant memory
         memory_integrated_hidden = []
+        all_attn_weights = []
         
         for i in range(seq_len):
             # Get query embedding for this position
@@ -179,6 +311,8 @@ class MemoryRetriever(nn.Module):
                 attn_mask=None,
                 key_padding_mask=None,
             )
+            
+            all_attn_weights.append(attn_weights)
             
             # Get hidden state for this position
             pos_hidden = query_hidden[:, i:i+1, :]  # [batch_size, 1, hidden_size]
@@ -196,6 +330,10 @@ class MemoryRetriever(nn.Module):
             updated_hidden = self.layer_norm2(updated_hidden)
             
             memory_integrated_hidden.append(updated_hidden)
+        
+        # Store attention weights for visualization
+        if all_attn_weights:
+            self.last_attention_weights = torch.cat(all_attn_weights, dim=1)
             
         # Combine all positions
         return torch.cat(memory_integrated_hidden, dim=1)

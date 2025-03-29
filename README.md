@@ -116,6 +116,17 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Implemented `src/model/associative_memory/memory_retriever.py` with attention-based retrieval
 * Added multi-strategy memory selection (importance, recency, frequency, HTPS-combined)
 * Implemented comprehensive benchmarking in `examples/benchmark_all_features.py`
+* **Implemented Associative Memory Demo**
+* Created `examples/htps_associative_memory_demo.py` for interactive memory demonstration
+* Added memory visualization capabilities with attention heatmaps
+* Implemented memory adapter for seamless integration with EdgeFormer models
+* Added interactive memory exploration with add/clear/view commands
+* Created memory importance scoring based on content uniqueness
+* **Implemented Benchmark Analysis Utilities**
+* Created `scripts/analyze_benchmarks.py` for comprehensive performance analysis
+* Added visualization generation for benchmark metrics
+* Implemented feature impact analysis across different configurations
+* Added optimal configuration detection for different use cases
 
 **🔄 Recently Fixed:**
 
@@ -131,13 +142,14 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed Recurrent Processing Layer Access**: Updated `forward_with_hidden_states` to correctly use `self.layers` instead of `self.encoder.layer`
 * **Added Comprehensive Documentation**: Created README_features.md with detailed information on advanced features
 * **Fixed Benchmark Error Handling**: Updated benchmark script to handle parameter mismatches gracefully
-* **Created Placeholder Implementations**: Added initial implementations for associative memory components
+* **Fixed Associative Memory Integration**: Created model adapter for seamless memory integration
+* **Improved Memory Retriever**: Enhanced attention-based memory retrieval with visualization support
+* **Fixed Memory Demo Import Issues**: Resolved import errors in the associative memory demo
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
 * **Complete Benchmark Analysis**: Analyze results from comprehensive benchmarking (High Priority)
-* **Integrate Associative Memory Components**: Connect the memory components with EdgeFormer architecture (High Priority)
-* **Create Associative Memory Demo**: Build a demonstration script showcasing memory capabilities (High Priority)
+* **Improve Associative Memory Performance**: Optimize memory retrieval for better reasoning tasks (Medium Priority)
 * **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority)
 * **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities (High Priority)
 * **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths (Medium Priority)
@@ -160,78 +172,46 @@ source edgeformer_env/bin/activate  # On Windows: edgeformer_env\Scripts\activat
 # Install dependencies
 pip install -r requirements.txt
 
+# Install visualization dependencies
+pip install matplotlib seaborn pandas
+
 # For AMD GPU acceleration (optional)
 # Note: DirectML support is in progress
 # Current alternative is to use ONNX Runtime with DirectML backend
 pip install --no-cache-dir --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-directml/pypi/simple/ onnxruntime-directml
 ```
 
-### Usage Examples
-
-#### Testing Value-Based Recurrent Depth Processing
+### Testing Associative Memory
 
 ```bash
-# Test value-based recurrent processing functionality
-python examples/test_value_integration.py --model_type mla --sequence_length 128 --min_iterations 2 --max_iterations 10 --convergence_threshold 0.005 --device cpu
+# Run the associative memory demo with visualization
+python examples/htps_associative_memory_demo.py --visualize
 
-# Test value-based recurrent reasoning demo
-python examples/value_recurrent_reasoning_demo.py --prompt "Solve this math problem: If a circle has a radius of 5 cm, what is its area?" --min_iterations 2 --max_iterations 32 --convergence_threshold 0.005 --device cpu --visualize
+# Try with a specific prompt
+python examples/htps_associative_memory_demo.py --prompt "Explain quantum mechanics" --visualize
 
-# Test with different convergence thresholds
-python examples/test_value_integration.py --model_type standard --sequence_length 128 --min_iterations 2 --max_iterations 16 --convergence_threshold 0.01 --device cpu
+# Enable advanced features
+python examples/htps_associative_memory_demo.py --use_recurrent --use_budget --use_kv_cache --visualize
 
-# Test with different tasks
-python examples/value_recurrent_reasoning_demo.py --prompt "Explain the concept of quantum entanglement in simple terms." --min_iterations 2 --max_iterations 24 --convergence_threshold 0.008 --device cpu
+# Load initial memories from a file
+python examples/htps_associative_memory_demo.py --memory_file data/knowledge_base.txt --visualize
 ```
 
-#### Using the Unified Features Demo
+### Analyzing Benchmark Results
 
 ```bash
-# Launch the unified demo with all features
-python examples/unified_features_demo.py --prompt "EdgeFormer is" --max_length 100 --use_kv_cache --use_recurrent --use_budget --visualize
+# Generate a comprehensive benchmark analysis
+python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
 
-# Test with a reasoning task
-python examples/unified_features_demo.py --prompt "Solve this step by step: If a rectangle has a length of 8 meters and a width of 5 meters, what is its area and perimeter?" --max_length 200 --use_recurrent --min_iterations 2 --max_iterations 12 --convergence_threshold 0.005 --device cpu --visualize
+# Create visualizations with interactive mode
+python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
 
-# Test with KV cache management only
-python examples/unified_features_demo.py --prompt "EdgeFormer is an efficient transformer implementation that" --max_length 100 --use_kv_cache --device cpu
-
-# Test with budget forcing only
-python examples/unified_features_demo.py --prompt "Solve this math problem step by step: 5 + 7 * 3 =" --max_length 200 --use_budget --device cpu
+# Filter outliers for cleaner analysis
+python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md --filter_outliers
 ```
-
-#### Running Benchmarks
-
-```bash
-# Run comprehensive benchmarks (full test suite)
-python examples/benchmark_all_features.py --device cpu --output_dir benchmark_results
-
-# Run a quick test with fewer combinations
-python examples/benchmark_all_features.py --device cpu --quick_test
-
-# Run benchmarks with specific settings
-python examples/benchmark_all_features.py --device cpu --min_iterations 3 --max_iterations 15 --convergence_threshold 0.003
-```
-
-## 📚 Documentation
-
-Complete documentation is available via the MkDocs website:
-
-```bash
-# Install MkDocs if you haven't already
-pip install mkdocs mkdocs-material
-
-# Serve the documentation locally
-cd edgeformer-docs
-mkdocs serve
-```
-
-Visit `http://127.0.0.1:8000` to view the documentation.
-
-## 🧩 Project Structure
-
-```
-EdgeFormer/
+Here's the remainder of the updated README file:
+🧩 Project Structure
+CopyEdgeFormer/
 ├── src/                       # Core model implementation
 │   ├── model/                 # Model architecture
 │   │   ├── edgeformer.py      # Main EdgeFormer model
@@ -245,6 +225,7 @@ EdgeFormer/
 │   │   ├── graph/             # Graph processing components
 │   │   ├── latent/            # Continuous latent reasoning components
 │   │   └── config.py          # Configuration classes
+│   ├── model_adaptor.py       # Memory adapter for model integration
 │   └── utils/                 # Utilities and optimizations
 │       ├── long_sequence.py   # Long sequence processing utilities
 │       ├── text_dataset.py    # Dataset utilities for text processing
@@ -279,76 +260,55 @@ EdgeFormer/
 │   ├── test_online_training.py # Simplified online training testing
 │   └── simplified_online_training_demo.py # Online training demonstration
 ├── scripts/                   # Helper scripts
+│   ├── analyze_benchmarks.py  # Benchmark analysis and visualization script
+│   ├── visualize_benchmarks.py # Benchmark visualization utilities
+│   └── curate_limo_dataset.py # LIMO dataset curation script
 ├── checkpoints/               # Saved model checkpoints
 ├── data/                      # Dataset files
 ├── model_load_fix.py          # Model loading analysis tool
 ├── convert_model_keys.py      # Key format conversion tool
 ├── README_features.md         # Detailed documentation of advanced features
 └── README.md                  # Project documentation
-```
-
-## 📝 Next Steps
-
+📝 Next Steps
 Now that we've implemented and tested the core features, here are the immediate next steps:
-
-### 1. Create a demonstration for associative memory (1-2 days)
-
-```bash
-# Create the htps_associative_memory_demo.py file
-touch examples/htps_associative_memory_demo.py
-
-# Edit the demo script to showcase memory capabilities
-nano examples/htps_associative_memory_demo.py
-
-# Test the associative memory demo
-python examples/htps_associative_memory_demo.py --prompt "Explain quantum mechanics" --device cpu
-```
-
-### 2. Analyze benchmark results (1 day)
-
-```bash
-# Check the output directory for benchmark results
+1. Complete the benchmark analysis (1-2 days)
+bashCopy# Check the output directory for benchmark results
 ls -la benchmark_results
 
-# Generate a summary report from benchmark results
+# Generate a comprehensive analysis report
 python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
 
 # Create visualizations from benchmark data
-python scripts/visualize_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations
-```
+python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations --interactive
+2. Optimize associative memory performance (2-3 days)
+bashCopy# Profile memory retrieval performance
+python examples/test_htps_associative_memory.py --profile
 
-### 3. Begin LIMO training implementation (3-4 days)
+# Test memory integration with different configurations
+python examples/htps_associative_memory_demo.py --use_recurrent --min_iterations 2 --max_iterations 8 --convergence_threshold 0.005
 
-```bash
-# Create the LIMO dataset curation script
-touch scripts/curate_limo_dataset.py
-
-# Implement quality metrics for training data
-touch src/utils/limo/quality_metrics.py
-
-# Create a small curated dataset from WikiText
+# Benchmark associative memory on reasoning tasks
+python examples/benchmark_all_features.py --feature memory --task reasoning --output_dir benchmark_results/memory_reasoning
+3. Begin LIMO training implementation (3-4 days)
+bashCopy# Create a small curated dataset from WikiText
 python scripts/curate_limo_dataset.py --input_data data/wikitext --output_dir data/limo_curated --quality_threshold 0.8
 
 # Test LIMO training on a small model
 python examples/train_limo.py --dataset data/limo_curated --model_size small --epochs 10 --output_dir checkpoints/limo_test
-```
-
-### 4. Push changes to GitHub
-
-```bash
-# Update version information
+4. Push changes to GitHub
+bashCopy# Update version information
 echo "0.3.0" > VERSION
 
 # Commit all changes
 git add .
-git commit -m "feat: Implement associative memory components and comprehensive benchmarking
+git commit -m "feat: Implement associative memory components and benchmark analysis
 
 This update adds:
 - HTPS-inspired memory storage with multiple selection strategies
-- Attention-based memory retrieval with gating mechanism
-- Comprehensive benchmarking across all features
-- Placeholder implementations for future components
-- Fixed error handling in benchmark script"
+- Attention-based memory retrieval with visualization
+- Interactive associative memory demonstration
+- Comprehensive benchmark analysis tools
+- Model adapter for seamless memory integration"
 
 # Tag the release
 git tag -a v0.3.0 -m "Associative Memory and Benchmarking Release"
@@ -356,12 +316,8 @@ git tag -a v0.3.0 -m "Associative Memory and Benchmarking Release"
 # Push to GitHub
 git push origin main
 git push origin v0.3.0
-```
-
-### 5. Update documentation
-
-```bash
-# Update API documentation
+5. Update documentation
+bashCopy# Update API documentation
 python scripts/generate_api_docs.py --output_dir edgeformer-docs/docs/api
 
 # Update feature documentation with benchmark results
@@ -373,12 +329,7 @@ nano edgeformer-docs/docs/features/associative_memory.md
 # Serve the updated documentation
 cd edgeformer-docs
 mkdocs serve
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the `LICENSE` file for details.
-
-## Author
-
-Developed by Oscar Nunez (art.by.oscar.n@gmail.com) using vibe coding principles.
+📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+Author
+Developed by Oscar Nunez (art.by.oscar.n@gmail.com) using vibe coding principles.RetryClaude can make mistakes. Please double-check responses.

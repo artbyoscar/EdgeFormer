@@ -1,168 +1,182 @@
+# src/model/associative_memory/htps_memory.py
+
 import torch
 import numpy as np
+from collections import deque
 
-class HTRSMemory:
+class HTPSMemory:
     """
-    HyperTree-inspired memory storage system for associative memory.
-    Implements a key-value memory with retrieval based on embedding similarity
-    and HTPS-inspired selection mechanisms.
+    HyperTree-inspired memory storage with multiple selection strategies.
+    
+    This class provides a simple but effective memory system that stores embeddings
+    and their associated text, with multiple strategies for selecting which memories
+    to retain and retrieve.
     """
-    def __init__(self, embedding_dim=256, capacity=1000, selection_temperature=0.1):
-        self.embedding_dim = embedding_dim
+    
+    def __init__(self, capacity=100, embedding_dim=768, selection_strategy='htps'):
+        """
+        Initialize the memory storage.
+        
+        Args:
+            capacity (int): Maximum number of entries in memory
+            embedding_dim (int): Dimension of embedding vectors
+            selection_strategy (str): Strategy for selecting memories to keep/retrieve
+                Options: 'importance', 'recency', 'frequency', 'htps'
+        """
         self.capacity = capacity
-        self.selection_temperature = selection_temperature
+        self.embedding_dim = embedding_dim
+        self.selection_strategy = selection_strategy
         
-        # Storage for key-value pairs
-        self.memory_keys = []
-        self.memory_values = []
+        # Storage for memory entries
+        self.embeddings = []  # List of embedding vectors
+        self.texts = []       # List of text entries
+        self.metadata = []    # List of metadata dicts
         
-        # Metadata for enhanced retrieval
-        self.access_counts = []
-        self.last_access_time = []
-        self.creation_time = []
-        self.importance_scores = []
-        
-        # Current timestep counter
-        self.current_time = 0
-        
-    def store(self, key_embedding, value, importance=None):
+        # Initialize metadata keys based on selection strategy
+        self.metadata_keys = ['importance', 'recency', 'access_count', 'last_access_time']
+    
+    def __len__(self):
+        """Return the number of entries in memory."""
+        return len(self.embeddings)
+    
+    def add_entry(self, embedding, text, importance=0.5):
         """
-        Store a key-value pair in memory with metadata.
+        Add a new entry to memory.
         
         Args:
-            key_embedding: Tensor embedding that serves as the key
-            value: Any object to store as the value
-            importance: Optional importance score (0-1)
+            embedding (torch.Tensor or numpy.ndarray): Embedding vector for the entry
+            text (str): Text associated with the embedding
+            importance (float): Initial importance score (0-1)
         """
-        if isinstance(key_embedding, torch.Tensor):
-            # Convert to numpy for storage efficiency if tensor
-            key_embedding = key_embedding.detach().cpu().numpy()
-            
-        # If at capacity, either replace lowest importance item or oldest
-        if len(self.memory_keys) >= self.capacity:
-            if importance is not None:
-                # Find least important item
-                min_importance_idx = np.argmin(self.importance_scores)
-                if importance > self.importance_scores[min_importance_idx]:
-                    # Replace least important item
-                    self._replace_item_at_index(min_importance_idx, key_embedding, value, importance)
-                    return
-            
-            # If no importance provided or not more important than least important,
-            # replace oldest item (FIFO)
-            self.memory_keys.pop(0)
-            self.memory_values.pop(0)
-            self.access_counts.pop(0)
-            self.last_access_time.pop(0)
-            self.creation_time.pop(0)
-            self.importance_scores.pop(0)
-            
-        # Append new item with metadata
-        self.memory_keys.append(key_embedding)
-        self.memory_values.append(value)
-        self.access_counts.append(0)
-        self.last_access_time.append(self.current_time)
-        self.creation_time.append(self.current_time)
-        self.importance_scores.append(importance if importance is not None else 0.5)
+        # Convert embedding to numpy if it's a torch tensor
+        if isinstance(embedding, torch.Tensor):
+            embedding = embedding.detach().cpu().numpy()
         
-        # Update timestep
-        self.current_time += 1
+        # Create metadata
+        metadata = {
+            'importance': importance,
+            'recency': 1.0,  # New entries are most recent
+            'access_count': 0,
+            'last_access_time': 0,
+            'creation_time': len(self.embeddings)  # Use entry index as time proxy
+        }
         
-    def _replace_item_at_index(self, idx, key_embedding, value, importance):
-        """Replace an item at a specific index."""
-        self.memory_keys[idx] = key_embedding
-        self.memory_values[idx] = value
-        self.access_counts[idx] = 0
-        self.last_access_time[idx] = self.current_time
-        self.creation_time[idx] = self.current_time
-        self.importance_scores[idx] = importance
+        # Add entry
+        self.embeddings.append(embedding)
+        self.texts.append(text)
+        self.metadata.append(metadata)
         
-    def retrieve(self, query_embedding, top_k=5, selection_strategy="similarity"):
+        # Update recency scores for all entries
+        self._update_recency()
+        
+        # If over capacity, remove entries according to selection strategy
+        if len(self.embeddings) > self.capacity:
+            self._prune_memory()
+    
+    def clear(self):
+        """Clear all entries from memory."""
+        self.embeddings = []
+        self.texts = []
+        self.metadata = []
+    
+    def _update_recency(self):
+        """Update recency scores for all entries."""
+        # Newest entry already has recency=1, decrement older entries
+        decay_factor = 0.99
+        for i in range(len(self.metadata) - 1):
+            self.metadata[i]['recency'] *= decay_factor
+    
+    def _prune_memory(self):
+        """Remove entries according to the selection strategy."""
+        if self.selection_strategy == 'importance':
+            # Remove least important entry
+            scores = [meta['importance'] for meta in self.metadata]
+        elif self.selection_strategy == 'recency':
+            # Remove oldest entry
+            scores = [meta['recency'] for meta in self.metadata]
+        elif self.selection_strategy == 'frequency':
+            # Remove least accessed entry
+            scores = [meta['access_count'] for meta in self.metadata]
+        elif self.selection_strategy == 'htps':
+            # HyperTree-inspired combined strategy
+            scores = []
+            for meta in self.metadata:
+                # Combine importance, recency and frequency with weights
+                score = (
+                    0.4 * meta['importance'] + 
+                    0.3 * meta['recency'] + 
+                    0.3 * (meta['access_count'] / (max(1, max(m['access_count'] for m in self.metadata))))
+                )
+                scores.append(score)
+        else:
+            # Default to recency
+            scores = [meta['recency'] for meta in self.metadata]
+        
+        # Find index of the entry with lowest score
+        min_idx = scores.index(min(scores))
+        
+        # Remove the entry
+        self.embeddings.pop(min_idx)
+        self.texts.pop(min_idx)
+        self.metadata.pop(min_idx)
+    
+    def retrieve(self, query_embedding, k=5):
         """
-        Retrieve top-k memories based on query similarity and selection strategy.
+        Retrieve the k most relevant memories for a query.
         
         Args:
-            query_embedding: Embedding to compare against memory keys
-            top_k: Number of results to return
-            selection_strategy: Strategy for selecting memories
-                - "similarity": Pure similarity-based retrieval
-                - "importance": Weight by importance scores
-                - "recency": Weight by recency of access
-                - "htps": HyperTree-inspired probabilistic selection
+            query_embedding (torch.Tensor or numpy.ndarray): Query embedding vector
+            k (int): Number of memories to retrieve
         
         Returns:
-            List of (value, similarity_score) tuples
+            tuple: (retrieved_embeddings, retrieval_scores, retrieved_texts)
         """
-        if not self.memory_keys:
-            return []
-            
+        if not self.embeddings:
+            # Return empty results if no memories
+            return torch.tensor([]), torch.tensor([]), []
+        
+        # Convert query to numpy if it's a torch tensor
         if isinstance(query_embedding, torch.Tensor):
-            query_embedding = query_embedding.detach().cpu().numpy()
-            
-        # Compute similarities between query and all keys
-        similarities = []
-        for key in self.memory_keys:
-            # Cosine similarity
-            similarity = np.dot(query_embedding, key) / (np.linalg.norm(query_embedding) * np.linalg.norm(key))
-            similarities.append(float(similarity))
-            
-        # Apply selection strategy
-        if selection_strategy == "similarity":
-            # Pure similarity-based retrieval
-            scores = similarities
-        elif selection_strategy == "importance":
-            # Weight by importance
-            scores = [sim * imp for sim, imp in zip(similarities, self.importance_scores)]
-        elif selection_strategy == "recency":
-            # Weight by recency (linear decay with time)
-            recency_weights = [1.0 - (self.current_time - t) / max(1, self.current_time) for t in self.last_access_time]
-            scores = [sim * rec for sim, rec in zip(similarities, recency_weights)]
-        elif selection_strategy == "htps":
-            # HyperTree-inspired probabilistic selection
-            # Combination of similarity, importance, and recency with temperature
-            recency_weights = [1.0 - (self.current_time - t) / max(1, self.current_time) for t in self.last_access_time]
-            importance_weights = [i + 0.2 for i in self.importance_scores]  # Add offset to ensure non-zero
-            
-            # Combine factors with temperature scaling
-            combined_scores = []
-            for s, i, r in zip(similarities, importance_weights, recency_weights):
-                # Apply temperature to make selection more deterministic/focused
-                scaled_score = (s * i * r) ** (1.0 / self.selection_temperature)
-                combined_scores.append(scaled_score)
-            
-            scores = combined_scores
+            query_np = query_embedding.detach().cpu().numpy()
         else:
-            raise ValueError(f"Unknown selection strategy: {selection_strategy}")
+            query_np = query_embedding
+        
+        # Calculate cosine similarity
+        similarities = []
+        for idx, emb in enumerate(self.embeddings):
+            # L2 normalize embeddings
+            emb_norm = emb / (np.linalg.norm(emb) + 1e-9)
+            query_norm = query_np / (np.linalg.norm(query_np) + 1e-9)
             
-        # Get top-k indices
-        top_indices = np.argsort(scores)[-top_k:][::-1]  # Descending order
+            # Calculate cosine similarity
+            similarity = np.dot(emb_norm, query_norm)
+            similarities.append(similarity)
+            
+            # Update metadata for this entry
+            self.metadata[idx]['access_count'] += 1
+            self.metadata[idx]['last_access_time'] = max(m['last_access_time'] for m in self.metadata) + 1
         
-        # Update metadata for retrieved items
-        for idx in top_indices:
-            self.access_counts[idx] += 1
-            self.last_access_time[idx] = self.current_time
+        # Convert to torch tensor for easier manipulation
+        similarity_scores = torch.tensor(similarities)
         
-        # Increment time
-        self.current_time += 1
+        # Get top k indices
+        k = min(k, len(self.embeddings))
+        topk_values, topk_indices = torch.topk(similarity_scores, k)
         
-        # Return corresponding values with similarity scores
-        return [(self.memory_values[i], similarities[i]) for i in top_indices]
+        # Gather results
+        retrieved_embeddings = [self.embeddings[i] for i in topk_indices]
+        retrieved_texts = [self.texts[i] for i in topk_indices]
         
-    def clear(self):
-        """Clear all memory."""
-        self.memory_keys = []
-        self.memory_values = []
-        self.access_counts = []
-        self.last_access_time = []
-        self.creation_time = []
-        self.importance_scores = []
+        # Convert retrieved embeddings to torch tensor
+        retrieved_embeddings_tensor = torch.tensor(np.stack(retrieved_embeddings))
         
-    def get_stats(self):
-        """Get memory usage statistics."""
-        return {
-            "size": len(self.memory_keys),
-            "capacity": self.capacity,
-            "avg_importance": np.mean(self.importance_scores) if self.importance_scores else 0,
-            "avg_access_count": np.mean(self.access_counts) if self.access_counts else 0,
-            "current_time": self.current_time
-        }
+        return retrieved_embeddings_tensor, topk_values, retrieved_texts
+    
+    def get_all_entries(self):
+        """
+        Return all memory entries with their importance scores.
+        
+        Returns:
+            list: List of (importance, text) tuples
+        """
+        return [(meta['importance'], text) for meta, text in zip(self.metadata, self.texts)]
