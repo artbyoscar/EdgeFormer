@@ -150,13 +150,32 @@ def run_benchmark(args):
                 # Initialize budget manager if needed
                 budget_manager = None
                 if features["budget"]:
-                    budget_manager = HTPSBudgetManager(
-                        budget_tokens=args.max_budget_tokens,
-                        max_thinking_extensions=args.extensions,
-                        extension_token="Wait",
-                        confidence_threshold=0.9,
-                        complexity_threshold=0.6
-                    )
+                    try:
+                        # First attempt with typical parameter names
+                        budget_manager = HTPSBudgetManager(
+                            max_tokens=args.max_budget_tokens,
+                            max_thinking_extensions=args.extensions,
+                            extension_token="Wait",
+                            confidence_threshold=0.9,
+                            complexity_threshold=0.6
+                        )
+                    except TypeError as e:
+                        # Log the error for debugging
+                        logger.warning(f"Error initializing budget manager with first attempt: {e}")
+                        try:
+                            # Second attempt with alternative parameter names
+                            budget_manager = HTPSBudgetManager(
+                                args.max_budget_tokens,  # Try positional arguments
+                                args.extensions,
+                                "Wait",
+                                0.9,
+                                0.6
+                            )
+                        except Exception as e2:
+                            # If both attempts fail, log and continue without budget forcing
+                            logger.error(f"Could not initialize budget manager: {e2}")
+                            logger.warning(f"Continuing without budget forcing for feature: {feature_name}")
+                            budget_manager = None
                 
                 # Tokenize input
                 tokens = [ord(c) % config.vocab_size for c in prompt]

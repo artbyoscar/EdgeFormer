@@ -2,7 +2,7 @@
 
 **EdgeFormer is a high-performance Transformer implementation optimized to run efficiently on a range of edge devices with limited compute resources. Initially focused on AMD Ryzen/Radeon systems, with active development towards broader hardware support (Intel, ARM) via advanced compiler techniques.**
 
-*(README updated: Friday, March 28, 2025 at 14:30:00 PM PDT)*
+*(README updated: Saturday, March 29, 2025 at 02:30:00 AM PDT)*
 
 For detailed information on EdgeFormer's advanced features, see [README_features.md](README_features.md).
 
@@ -111,6 +111,11 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Implemented `examples/unified_features_demo.py` showcasing all features
 * Added visualization capabilities for recurrent processing and budget forcing
 * Created a streamlined interface for feature selection and configuration
+* **Implemented Initial Associative Memory Components**
+* Created `src/model/associative_memory/htps_memory.py` with HTPS-inspired selection strategies
+* Implemented `src/model/associative_memory/memory_retriever.py` with attention-based retrieval
+* Added multi-strategy memory selection (importance, recency, frequency, HTPS-combined)
+* Implemented comprehensive benchmarking in `examples/benchmark_all_features.py`
 
 **🔄 Recently Fixed:**
 
@@ -125,14 +130,15 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed `kv_cache_manager` in Embeddings**: Properly initialized the attribute in the EdgeFormerEmbeddings class
 * **Fixed Recurrent Processing Layer Access**: Updated `forward_with_hidden_states` to correctly use `self.layers` instead of `self.encoder.layer`
 * **Added Comprehensive Documentation**: Created README_features.md with detailed information on advanced features
+* **Fixed Benchmark Error Handling**: Updated benchmark script to handle parameter mismatches gracefully
+* **Created Placeholder Implementations**: Added initial implementations for associative memory components
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
-* **Benchmark Performance Across Features**: Create comprehensive benchmarks for different feature combinations (High Priority)
-* **Optimize Value-Based Recurrent Processing**: Further refine pattern recognition capabilities and adaptive iteration policies (High Priority)
-* **Complete FlashAttention Integration:** Finalizing compatibility with AMD hardware and optimizing performance (High Priority)
+* **Complete Benchmark Analysis**: Analyze results from comprehensive benchmarking (High Priority)
+* **Integrate Associative Memory Components**: Connect the memory components with EdgeFormer architecture (High Priority)
+* **Create Associative Memory Demo**: Build a demonstration script showcasing memory capabilities (High Priority)
 * **Implement LIMO's Quality-Focused Training Approach:** Create curated training datasets following LIMO principles (High Priority)
-* **Incorporate HTPS-Enhanced Associative Memory:** Implementing dynamic knowledge retrieval with intelligent selection (High Priority)
 * **Develop Simplified Online Training Pipeline:** Create lightweight on-device fine-tuning capabilities (High Priority)
 * **Improve Attention Mechanisms Benchmarking:** Using the new research script to compare performance across different sequence lengths (Medium Priority)
 * **Extend Text Generation Capabilities:** Further improve text generation quality and diversity (Medium Priority)
@@ -194,6 +200,19 @@ python examples/unified_features_demo.py --prompt "EdgeFormer is an efficient tr
 python examples/unified_features_demo.py --prompt "Solve this math problem step by step: 5 + 7 * 3 =" --max_length 200 --use_budget --device cpu
 ```
 
+#### Running Benchmarks
+
+```bash
+# Run comprehensive benchmarks (full test suite)
+python examples/benchmark_all_features.py --device cpu --output_dir benchmark_results
+
+# Run a quick test with fewer combinations
+python examples/benchmark_all_features.py --device cpu --quick_test
+
+# Run benchmarks with specific settings
+python examples/benchmark_all_features.py --device cpu --min_iterations 3 --max_iterations 15 --convergence_threshold 0.003
+```
+
 ## 📚 Documentation
 
 Complete documentation is available via the MkDocs website:
@@ -221,6 +240,8 @@ EdgeFormer/
 │   │   ├── recurrent_block.py # Recurrent block implementation
 │   │   ├── vision/            # Vision transformer components
 │   │   ├── associative_memory/ # HTPS-enhanced associative memory components 
+│   │   │   ├── htps_memory.py # Memory storage with HTPS selection
+│   │   │   └── memory_retriever.py # Attention-based memory retrieval
 │   │   ├── graph/             # Graph processing components
 │   │   ├── latent/            # Continuous latent reasoning components
 │   │   └── config.py          # Configuration classes
@@ -266,69 +287,93 @@ EdgeFormer/
 └── README.md                  # Project documentation
 ```
 
-## 📝 Implementation Plan
+## 📝 Next Steps
 
-Based on our current development status and the recent implementation of value-based recurrent depth processing, we've established the following revised implementation plan:
+Now that we've implemented and tested the core features, here are the immediate next steps:
 
-### Immediate Next Steps (Days)
+### 1. Create a demonstration for associative memory (1-2 days)
 
-1. **Create Comprehensive Benchmarking (1-2 days)**
-   - Implement `examples/benchmark_all_features.py` for systematic testing
-   - Test different feature combinations across various tasks
-   - Measure memory usage, generation speed, and output quality
-   - Create visualizations for performance comparisons
+```bash
+# Create the htps_associative_memory_demo.py file
+touch examples/htps_associative_memory_demo.py
 
-2. **Begin HTPS-Enhanced Associative Memory Implementation (2-3 days)**
-   - Create directory structure for associative memory components
-   - Implement basic memory storage and retrieval mechanisms
-   - Design HTPS-inspired selection strategies
-   - Create simple demonstration script
+# Edit the demo script to showcase memory capabilities
+nano examples/htps_associative_memory_demo.py
 
-3. **Push Changes to GitHub (1 day)**
-   - Commit all changes with descriptive commit messages
-   - Tag the release as v0.3.0
-   - Update project documentation
-   - Verify functionality across different environments
+# Test the associative memory demo
+python examples/htps_associative_memory_demo.py --prompt "Explain quantum mechanics" --device cpu
+```
 
-### Short-Term Focus (1-2 Weeks)
+### 2. Analyze benchmark results (1 day)
 
-1. **Optimize Value-Based Recurrent Depth Processing (3-4 days)**
-   - Fine-tune pattern recognition capabilities
-   - Improve adaptive iteration policy heuristics
-   - Create task-specific configurations
-   - Document best practices for different use cases
+```bash
+# Check the output directory for benchmark results
+ls -la benchmark_results
 
-2. **Implement LIMO's Quality-Focused Training (4-6 days)**
-   - Create dataset curation scripts
-   - Implement quality metrics for training data
-   - Design LIMO-based training pipeline
-   - Compare performance against larger training datasets
+# Generate a summary report from benchmark results
+python scripts/analyze_benchmarks.py --input_dir benchmark_results --output_file benchmark_summary.md
 
-3. **Enhance Documentation (2-3 days)**
-   - Update API documentation
-   - Create usage tutorials for each feature
-   - Add visualization examples to documentation
-   - Update MkDocs website with new content
+# Create visualizations from benchmark data
+python scripts/visualize_benchmarks.py --input_dir benchmark_results --output_dir benchmark_visualizations
+```
 
-### Medium-Term Focus (2-4 Weeks)
+### 3. Begin LIMO training implementation (3-4 days)
 
-1. **Complete FlashAttention Integration (1-2 weeks)**
-   - Finalize AMD hardware compatibility
-   - Optimize for different sequence lengths
-   - Create comprehensive benchmarks
-   - Document best practices for different hardware
+```bash
+# Create the LIMO dataset curation script
+touch scripts/curate_limo_dataset.py
 
-2. **Develop Simplified Online Training Pipeline (1-2 weeks)**
-   - Create lightweight fine-tuning mechanisms
-   - Implement usage-based adaptation strategies
-   - Design efficient parameter updates
-   - Benchmark domain-specific performance improvements
+# Implement quality metrics for training data
+touch src/utils/limo/quality_metrics.py
 
-3. **Begin Continuous Latent Reasoning Implementation (2-3 weeks)**
-   - Research Chain of Continuous Thought approach
-   - Design integration with existing value-based processing
-   - Create prototype implementation
-   - Benchmark on complex reasoning tasks
+# Create a small curated dataset from WikiText
+python scripts/curate_limo_dataset.py --input_data data/wikitext --output_dir data/limo_curated --quality_threshold 0.8
+
+# Test LIMO training on a small model
+python examples/train_limo.py --dataset data/limo_curated --model_size small --epochs 10 --output_dir checkpoints/limo_test
+```
+
+### 4. Push changes to GitHub
+
+```bash
+# Update version information
+echo "0.3.0" > VERSION
+
+# Commit all changes
+git add .
+git commit -m "feat: Implement associative memory components and comprehensive benchmarking
+
+This update adds:
+- HTPS-inspired memory storage with multiple selection strategies
+- Attention-based memory retrieval with gating mechanism
+- Comprehensive benchmarking across all features
+- Placeholder implementations for future components
+- Fixed error handling in benchmark script"
+
+# Tag the release
+git tag -a v0.3.0 -m "Associative Memory and Benchmarking Release"
+
+# Push to GitHub
+git push origin main
+git push origin v0.3.0
+```
+
+### 5. Update documentation
+
+```bash
+# Update API documentation
+python scripts/generate_api_docs.py --output_dir edgeformer-docs/docs/api
+
+# Update feature documentation with benchmark results
+nano edgeformer-docs/docs/features/benchmarks.md
+
+# Add associative memory documentation
+nano edgeformer-docs/docs/features/associative_memory.md
+
+# Serve the updated documentation
+cd edgeformer-docs
+mkdocs serve
+```
 
 ## 📄 License
 
