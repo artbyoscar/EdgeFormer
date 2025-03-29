@@ -1,6 +1,0 @@
-{'seq_len': 128, 'success': True, 'avg_time': 0.026883522669474285, 'tokens_per_sec': 4761.280788002589, 'param_mem_mb': 14.640045166015625, 'peak_mem_mb': None}
-{'seq_len': 256, 'success': True, 'avg_time': 0.02964321772257487, 'tokens_per_sec': 8636.039528362082, 'param_mem_mb': 14.640045166015625, 'peak_mem_mb': None}
-{'seq_len': 512, 'success': True, 'avg_time': 0.05399099985758463, 'tokens_per_sec': 9483.062016827504, 'param_mem_mb': 14.640045166015625, 'peak_mem_mb': None}
-{'seq_len': 1024, 'success': True, 'avg_time': 0.16574835777282715, 'tokens_per_sec': 6178.040094994383, 'param_mem_mb': 14.640045166015625, 'peak_mem_mb': None}
-{'seq_len': 2048, 'success': True, 'avg_time': 0.5496464570363363, 'tokens_per_sec': 3726.031476747261, 'param_mem_mb': 14.640045166015625, 'peak_mem_mb': None}
-{'seq_len': 4096, 'success': False, 'error': 'The size of tensor a (4096) must match the size of tensor b (2048) at non-singleton dimension 1'}

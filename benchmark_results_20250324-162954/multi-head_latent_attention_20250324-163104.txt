@@ -1,6 +1,0 @@
-# Multi-Head Latent Attention
-Sequence Length, Memory Usage (MB), Inference Time (s), Success
-128, 34.95, 0.1176, True
-512, 120.91, 0.2964, True
-2048, 173.99, 1.9344, True
-4096, 947.52, 5.6175, True

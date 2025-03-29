@@ -1,9 +1,0 @@
-This is a sample text to test the EdgeFormer training pipeline. It needs to be long enough to create multiple training examples.
-
-EdgeFormer is a custom transformer implementation incorporating Multi-Head Latent Attention (MLA) optimization to run efficiently on edge devices with limited compute. It's specifically designed for Lenovo Yoga laptops with AMD Ryzen processors and Radeon graphics.
-
-Multi-Head Latent Attention works by projecting the keys and values into a much smaller shared latent space before computing attention. This significantly reduces memory requirements since the KV cache size is proportional to sequence_length × hidden_size, and MLA reduces this to sequence_length × latent_size where latent_size is much smaller than hidden_size.
-
-Sliding Window Attention limits attention computation to a local window, resulting in O(n) memory scaling instead of O(n²). This allows the model to handle sequences up to 4-6x longer than with full attention, with minimal quality impact when using appropriate window sizes.
-
-INT8 Quantization provides 4.88x smaller model size and 8.1% faster inference with minimal quality impact. The INT4 Quantization achieves up to 8x smaller model size with approximately 5% faster inference while maintaining good output similarity with careful implementation.

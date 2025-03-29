@@ -1,9 +1,0 @@
-# Standard Attention
-Sequence Length, Memory Usage (MB), Inference Time (s), Success
-128, 63.96, 0.1296, True
-256, 81.96, 0.0991, True
-512, 100.32, 0.1264, True
-1024, 283.23, 0.3232, True
-2048, 242.48, 0.8078, True
-4096, 119.46, 3.0397, True
-8192, 1000.33, 18.1459, True
