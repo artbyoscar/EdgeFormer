@@ -27,6 +27,10 @@ class EdgeFormerEmbeddings(nn.Module):
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
+        # Initialize kv_cache_manager attribute
+        self.kv_cache_manager = None
+        self.config = config  # Also need to store config for later use
+
     def forward(self, input_ids=None, position_ids=None, inputs_embeds=None):
         # Initialize KV Cache Manager if needed
         if self.kv_cache_manager is None:
@@ -535,32 +539,40 @@ class EdgeFormer(nn.Module):
 
     def forward_with_hidden_states(self, input_ids, attention_mask=None):
         """Forward pass that returns both logits and hidden states for recurrent processing.
-    
+
         Args:
             input_ids: Input token IDs
             attention_mask: Optional attention mask
-        
+    
         Returns:
             tuple: (logits, hidden_states)
         """
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
-        
+    
         # Get embeddings
         embeddings = self.embeddings(input_ids)
-    
+
         # Initialize hidden states list to store intermediate values
         all_hidden_states = [embeddings]
-    
-        # Pass through encoder layers
+
+        # Pass through transformer layers
         hidden_states = embeddings
-        for layer in self.encoder.layer:
-            hidden_states = layer(hidden_states, attention_mask)[0]
+        for layer in self.layers:  # Changed from self.encoder.layer to self.layers
+            # Use the first output (hidden states) from the layer
+            hidden_states = layer(
+                hidden_states,
+                attention_mask=self._prepare_attention_mask(attention_mask, input_ids.shape)
+            )[0]
             all_hidden_states.append(hidden_states)
-    
+
+        # Apply final layer norm
+        hidden_states = self.ln_f(hidden_states)
+        all_hidden_states.append(hidden_states)
+
         # Get logits from final hidden states
         logits = self.lm_head(hidden_states)
-    
+
         return logits, all_hidden_states
   
     def generate(

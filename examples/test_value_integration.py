@@ -84,7 +84,7 @@ def test_value_integration(args):
             break
             
         # Apply recurrent processing using the last transformer layer
-        current_hidden = model.encoder.layer[-1].forward(current_hidden)[0]
+        current_hidden = model.layers[-1].forward(current_hidden)[0]
     
     logger.info("Value integration test completed successfully!")
 

@@ -1,3 +1,5 @@
+I'll update the README_features.md document based on what you already have, incorporating your recent implementation work on the EdgeFormer project.
+
 # EdgeFormer Advanced Features Documentation
 
 This document provides detailed information on EdgeFormer's key advanced features, including implementation details, usage examples, and performance characteristics.
@@ -15,7 +17,7 @@ The KV Cache Manager enables efficient handling of long sequences by intelligent
 
 ### Implementation Details
 
-The KV Cache Manager (`fixed_kv_cache_manager.py`) handles:
+The KV Cache Manager (`kv_cache_manager.py`) handles:
 
 - Dynamic growth of the KV cache as sequence length increases
 - Offloading of less frequently accessed cache entries to CPU RAM
@@ -27,22 +29,22 @@ The KV Cache Manager (`fixed_kv_cache_manager.py`) handles:
 ```python
 # Initialize the KV Cache Manager
 kv_cache_manager = KVCacheManager(
+    max_batch_size=1,
+    max_seq_length=1024,
     num_layers=config.num_hidden_layers,
-    num_attention_heads=config.num_attention_heads,
+    num_heads=config.num_attention_heads,
     head_dim=config.hidden_size // config.num_attention_heads,
-    max_seq_length=1024,  # Initial size, will grow as needed
     device=device,
     enable_offload=True   # Enable offloading to CPU RAM
 )
 
 # Set it in the model
-model.set_kv_cache_manager(kv_cache_manager)
+model.kv_cache_manager = kv_cache_manager
 
 # Generate text with KV cache management
 output = model.generate(
-    input_ids,
-    max_length=1024,
-    use_kv_cache=True     # Enable KV cache usage
+    input_text,
+    max_length=1024
 )
 ```
 
@@ -60,6 +62,7 @@ The KV Cache Manager uses a sliding window approach to determine which cache ent
 - Batched transfers to minimize PCI-e bus overhead
 - Prioritization based on recency and access patterns
 - Prefetching heuristics to reduce latency
+- Automatic initialization in the EdgeFormerEmbeddings class
 
 ## Value-Based Recurrent Depth Processing
 
@@ -67,31 +70,29 @@ This feature enables variable compute allocation during inference by iteratively
 
 ### Implementation Details
 
-The Value Estimator (`value_estimator.py`) provides:
+The ImprovedValueEstimator (`value_estimator.py`) provides:
 
 - Quality assessment of intermediate hidden states
 - Convergence detection for efficient stopping
 - Adaptive iteration control based on task complexity
 - Value history tracking for performance analysis
+- Pattern recognition for better convergence detection
 
 ### Usage Example
 
 ```python
 # Initialize the Value Estimator
-value_estimator = ValueEstimator(config.hidden_size, config)
+value_estimator = ImprovedValueEstimator(config.hidden_size, config)
 value_estimator.to(device)
 
-# Set it in the model
-model.set_value_estimator(value_estimator)
-
-# Generate with value-based recurrent processing
-output_ids = model.generate_with_recurrent_processing(
-    input_ids,
-    max_length=100,
-    min_iterations=2,      # Minimum iterations per token
-    max_iterations=10,     # Maximum iterations per token
-    convergence_threshold=0.005  # Custom convergence threshold
-)
+# Generate with value-based recurrent processing using the unified demo
+python examples/unified_features_demo.py --prompt "Solve this math problem:" \
+    --max_length 200 \
+    --use_recurrent \
+    --min_iterations 2 \
+    --max_iterations 10 \
+    --convergence_threshold 0.005 \
+    --visualize
 ```
 
 ### Key Features
@@ -100,6 +101,7 @@ output_ids = model.generate_with_recurrent_processing(
 - **Convergence Detection**: Automatically determines when additional iterations provide diminishing returns
 - **Quality Improvement**: Achieves up to 20% accuracy improvement on complex reasoning tasks
 - **Computation Efficiency**: Uses 30-50% less compute than fixed-depth approaches for equivalent quality
+- **Visualization Support**: Provides insights into iteration counts and value convergence patterns
 
 ### Technical Notes
 
@@ -109,7 +111,7 @@ Value-based recurrent processing shows different convergence patterns depending 
 - **Oscillatory patterns**: For numerical computation (8-12 iterations)
 - **Sliding transformations**: For complex reasoning (10-20+ iterations)
 
-The improved Value Estimator uses attention-weighted pooling and pattern coherence detection to better differentiate between structured and random states.
+The ImprovedValueEstimator uses attention-weighted pooling and pattern coherence detection to better differentiate between structured and random states, resulting in more efficient convergence detection and higher-quality outputs.
 
 ## HyperTree-Inspired Budget Forcing
 
@@ -127,13 +129,21 @@ The HTPSBudgetManager (`htps_budget_manager.py`) handles:
 ### Usage Example
 
 ```python
+# Initialize the Budget Manager
+budget_manager = HTPSBudgetManager(
+    max_budget_tokens=2048,
+    max_thinking_extensions=3,
+    extension_token="Wait",
+    confidence_threshold=0.9,
+    complexity_threshold=0.6
+)
+
 # Use budget forcing in text generation
-output = model.generate_with_budget_forcing(
-    input_ids,
+output = model.generate(
+    input_text,
     max_length=1024,
-    extension_token="Wait",  # Token to insert for extended thinking
-    max_extensions=3,        # Maximum thinking extensions
-    criteria="quality"       # Extension criteria (quality|uncertainty|complexity)
+    budget_manager=budget_manager,
+    task_complexity=0.7  # Medium complexity
 )
 ```
 
@@ -155,19 +165,25 @@ Budget forcing shows significant benefits for complex reasoning tasks:
 
 ## Unified Demo
 
-The EdgeFormer features demo (`demo_edgeformer_features.py`) showcases all advanced capabilities in an interactive application.
+The EdgeFormer unified features demo (`unified_features_demo.py`) showcases all advanced capabilities in an interactive application.
 
 ### Usage Instructions
 
 ```bash
 # Basic usage
-python examples/demo_edgeformer_features.py --prompt "EdgeFormer is" --max_length 100
+python examples/unified_features_demo.py --prompt "EdgeFormer is" --max_length 100
+
+# With individual features
+python examples/unified_features_demo.py --prompt "EdgeFormer is" --max_length 100 --use_kv_cache
+python examples/unified_features_demo.py --prompt "Solve this math problem:" --max_length 200 --use_recurrent
+python examples/unified_features_demo.py --prompt "Explain quantum physics:" --max_length 300 --use_budget
 
 # With all features enabled
-python examples/demo_edgeformer_features.py --prompt "Solve this math problem step by step: 5 + 7 * 3 =" \
+python examples/unified_features_demo.py --prompt "Solve this math problem step by step: 5 + 7 * 3 =" \
     --max_length 200 \
-    --offload \
-    --recurrent_depth 10 \
+    --use_kv_cache \
+    --use_recurrent \
+    --use_budget \
     --visualize
 ```
 
@@ -175,14 +191,17 @@ python examples/demo_edgeformer_features.py --prompt "Solve this math problem st
 
 - `--prompt`: Initial text for generation
 - `--max_length`: Maximum generation length
-- `--model_path`: Path to model checkpoint
-- `--vocab_path`: Path to vocabulary file
-- `--attention_type`: Attention mechanism (standard|mla|mla_window)
 - `--device`: Device for inference (cpu|cuda)
-- `--offload`: Enable KV cache offloading
-- `--recurrent_depth`: Maximum recurrent iterations
+- `--use_kv_cache`: Enable KV cache management
+- `--use_recurrent`: Enable value-based recurrent processing
+- `--use_budget`: Enable HyperTree budget forcing
+- `--offload_threshold`: Token threshold for offloading to RAM
 - `--min_iterations`: Minimum recurrent iterations
 - `--max_iterations`: Maximum recurrent iterations
+- `--convergence_threshold`: Convergence threshold for recurrent processing
+- `--max_budget_tokens`: Maximum budget tokens
+- `--extension_token`: Token for extending thinking
+- `--extensions`: Maximum thinking extensions
 - `--visualize`: Generate visualizations of processing
 
 ### Visualization Examples
@@ -192,8 +211,9 @@ The demo generates visualizations showing:
 1. Memory usage during generation
 2. Iteration counts per token
 3. Value convergence during recurrent processing
+4. Budget extension points
 
-These visualizations help understand the behavior of recurrent processing and identify optimization opportunities.
+These visualizations help understand the behavior of the advanced features and identify optimization opportunities.
 
 ## Performance Benchmarks
 
@@ -260,3 +280,6 @@ Upcoming improvements and research areas:
 3. Deeper integration with LIMO training and HTPS-enhanced associative memory
 4. Further optimization of value estimation for better structured pattern recognition
 5. Mobile-optimized variants for ultra-low-power edge devices
+6. Integration of associative memory chains for dynamic knowledge incorporation
+7. Continuous latent reasoning through Chain of Continuous Thought approach
+8. Zero-shot adaptive computation with per-token adaptive exits
