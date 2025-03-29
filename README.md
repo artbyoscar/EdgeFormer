@@ -162,9 +162,25 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * Implemented `examples/test_htps_budget_forcing.py` for benchmark testing
 * Added `get_tokenizer` function to text_dataset.py
 * Added `__len__` method to SimpleTokenizer
+* **Fixed Configuration Validation Issues**
+* Modified EdgeFormerConfig to support attention_type parameter
+* Improved sliding window size handling with dynamic adaptation to max_position_embeddings
+* Enhanced error handling and parameter validation in configuration
+* Added auto-adjustment capabilities to avoid validation errors
+
+**🔄 Recently Fixed:**
+
+* **Fixed Configuration Validation**: Resolved issues with sliding window size validation by making it dynamic based on max_position_embeddings
+* **Added Attention Type Support**: Implemented proper support for attention_type parameter in EdgeFormerConfig
+* **Enhanced Budget Forcing**: Improved the HTPSBudgetManager to increase likelihood of extension triggers
+* **Improved Tokenizer Handling**: Added flexibility for different tokenizer types in budget forcing
+* **Added Debug Output**: Implemented additional debug output for troubleshooting
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
+* **Train Model with Improved Configuration**: Complete training with adjusted parameters to improve text generation quality
+* **Test Budget Forcing with Updated Parameters**: Evaluate HTPS budget forcing with the enhanced configuration
+* **Fine-tune Budget Manager Parameters**: Adjust thresholds and behavior based on test results
 * **Implement KV Cache Offloading to CPU RAM:** Migrating from disk-based approach to RAM-based offloading using the KVCacheManager implementation. (High Priority)
 * **Complete FlashAttention Integration:** Finalizing compatibility with AMD hardware and optimizing performance. (High Priority)
 * **Implement Value-Based Recurrent Depth Processing:** Enabling test-time compute scaling through iterative reasoning with intelligent stopping mechanism for complex tasks. (High Priority)
@@ -364,6 +380,18 @@ python examples/test_online_training.py --dataset_path data/user_interactions.js
 #### Model Training and Text Generation
 
 ```bash
+# Create a larger test corpus for improved training
+python -c "with open('data/small_test.txt', 'w', encoding='utf-8') as f: f.write('EdgeFormer is a custom transformer implementation optimized for edge devices. It incorporates Multi-Head Latent Attention and other techniques for efficient inference with limited resources. The model supports long context windows through sliding window attention mechanisms. Key features include memory efficiency for handling long sequences, performance trade-offs between standard and latent attention, and support for various quantization methods. The implementation includes HyperTree-inspired budget forcing for controlling inference-time compute resources and value-based recurrent depth processing for complex reasoning. EdgeFormer is designed to run efficiently on AMD, Intel, and ARM devices using advanced compiler techniques.')"
+
+# Create a dataset with appropriate sequence length
+python examples/create_text_dataset.py --input_file data/small_test.txt --seq_length 128 --output_dir data --show_samples
+
+# Train the model with more epochs
+python examples/train_with_real_data.py --dataset_file data/text_dataset.pt --seq_length 128 --batch_size 2 --epochs 20 --attention_type mla --test_generation --device cpu
+
+# After training, test budget forcing with quality criteria
+python examples/htps_budget_forcing_demo.py --prompt "Test prompt" --max_tokens 200 --extension_token "Wait" --extensions 2 --device cpu --criteria quality
+
 # Create a simple test corpus
 python -c "with open('data/small_test.txt', 'w', encoding='utf-8') as f: f.write('EdgeFormer is a custom transformer implementation incorporating Multi-Head Latent Attention optimization to run efficiently on edge devices with limited compute. It\'s specifically designed for AMD Ryzen processors and Radeon graphics. The key features include memory efficiency, performance trade-offs, and maximum sequence length support up to 8192 tokens. This is just a small test file to verify that the training pipeline works correctly.')"
 
@@ -532,45 +560,57 @@ Based on our current development status and the integration of HyperTree-inspire
 
 ### Phase 1 (Near-Term, 1-2 Months)
 
-1. **Implement KV Cache Offloading to CPU RAM (2-3 weeks)**
+1. **Continue Training and Improving Text Generation (1-2 weeks)**
+   - Create larger test corpora with more diverse content
+   - Train models with more epochs to improve quality
+   - Adjust configuration parameters for better results
+   - Benchmark and verify text generation quality
+
+2. **Refine Budget Forcing Implementation (1-2 weeks)**
+   - Fine-tune budget forcing parameters based on test results
+   - Improve complexity estimation for better extension triggering
+   - Enhance tokenizer handling for different model configurations
+   - Create comprehensive documentation and benchmark results
+
+3. **Implement KV Cache Offloading to CPU RAM (2-3 weeks)**
    - Integrate the KVCacheManager into EdgeFormer's forward and generate methods
    - Add configurable memory thresholds for automatic offloading
    - Benchmark performance improvements with various sequence lengths
    - Create a detailed example demonstrating KV cache management
 
-2. **Complete FlashAttention Integration (2-3 weeks)**
+4. **Complete FlashAttention Integration (2-3 weeks)**
    - Finalize compatibility with AMD hardware
    - Optimize for different sequence lengths
    - Create benchmarking tools for attention performance
    - Document best practices for different hardware configurations
 
-3. **Implement Value-Based Recurrent Depth Processing (3-4 weeks)**
+5. **Implement Value-Based Recurrent Depth Processing (3-4 weeks)**
    - Finalize recurrent block implementation that can be iterated at inference time
    - Develop value estimation component for intelligent stopping based on diminishing returns
    - Create API for configuring iteration counts and stopping criteria
    - Benchmark performance improvements across different task types
    - Visualize latent state evolution during reasoning
 
-4. **Develop HyperTree-Enhanced Adaptive Iteration Policy (3-4 weeks)**
+6. **Develop HyperTree-Enhanced Adaptive Iteration Policy (3-4 weeks)**
    - Implement heuristics to determine optimal iteration counts
    - Create intelligent path selection for computation resource allocation
    - Create convergence detection mechanisms for early stopping
    - Benchmark efficiency improvements across different tasks
    - Document guidelines for different device profiles
 
-5. **Implement LIMO's Quality-Focused Training Approach (3-4 weeks)**
+7. **Implement LIMO's Quality-Focused Training Approach (3-4 weeks)**
    - Create a small, curated training dataset following LIMO principles
    - Develop evaluation metrics to assess quality vs. quantity tradeoffs
    - Build training pipeline that emphasizes careful example selection
    - Compare performance against models trained on much larger datasets
 
-6. **Incorporate HTPS-Enhanced Associative Memory (3-4 weeks)**
+8. **Incorporate HTPS-Enhanced Associative Memory (3-4 weeks)**
    - Implement dynamic knowledge retrieval with intelligent selection during inference
    - Create an efficient storage mechanism for relevant information
    - Optimize for edge device constraints with minimal overhead
    - Benchmark reasoning performance improvements
 
-7. **Develop Simplified Online Training Pipeline (3-4 weeks)**
+9. **Develop Simplified Online Training Pipeline (3-4 weeks)**
    - Create lightweight implementation for on-device fine-tuning
    - Develop mechanism for collecting and processing usage data
    - Design efficient update strategy for minimal computational overhead
