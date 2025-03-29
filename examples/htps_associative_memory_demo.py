@@ -5,6 +5,7 @@ import numpy as np
 import logging
 import os
 import sys
+import inspect
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,6 +22,28 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger('edgeformer')
+
+def debug_htps_memory():
+    """Print the parameters expected by HTPSMemory.__init__"""
+    print("="*50)
+    print("HTPSMemory.__init__ parameters:")
+    print(inspect.signature(HTPSMemory.__init__))
+    print("="*50)
+
+def debug_memory_retriever():
+    """Print the parameters expected by MemoryRetriever.__init__"""
+    print("="*50)
+    print("MemoryRetriever.__init__ parameters:")
+    print(inspect.signature(MemoryRetriever.__init__))
+    print("="*50)
+
+def debug_kv_cache_manager():
+    """Print the parameters expected by KVCacheManager.__init__"""
+    from src.utils.kv_cache_manager import KVCacheManager
+    print("="*50)
+    print("KVCacheManager.__init__ parameters:")
+    print(inspect.signature(KVCacheManager.__init__))
+    print("="*50)
 
 class ModelAdapter:
     """
@@ -310,6 +333,8 @@ class AssociativeMemoryDemo:
         # Initialize KV Cache Manager if requested
         if args.use_kv_cache:
             from src.utils.kv_cache_manager import KVCacheManager
+            # Debug KV Cache Manager parameters
+            debug_kv_cache_manager()
             kv_cache_manager = KVCacheManager(
                 max_batch_size=1,
                 max_seq_length=1024,
@@ -317,26 +342,31 @@ class AssociativeMemoryDemo:
                 num_heads=self.config.num_attention_heads,
                 head_dim=self.config.hidden_size // self.config.num_attention_heads,
                 device=self.device,
-                enable_offload=True,
-                offload_size_threshold=args.offload_threshold  # Changed from offload_threshold to offload_size_threshold
+                enable_offload=True
+                # Removed offload_threshold parameter
             )
             self.model.kv_cache_manager = kv_cache_manager
-            logger.info(f"KV Cache Manager initialized with offload threshold: {args.offload_threshold}")
+            logger.info(f"KV Cache Manager initialized")
+        
+        # Debug HTPSMemory parameters
+        debug_htps_memory()
+        # Debug MemoryRetriever parameters
+        debug_memory_retriever()
         
         # Initialize associative memory
         self.memory = HTPSMemory(
-            capacity=args.memory_size,  # Changed from memory_size to capacity
-            hidden_size=self.config.hidden_size,
+            capacity=args.memory_size,  # Using capacity instead of memory_size
             strategy=args.memory_strategy,
             device=self.device
+            # Removed hidden_size parameter
         )
         
-        # Initialize memory retriever
+        # Initialize memory retriever - adjust parameters based on debug output
         self.retriever = MemoryRetriever(
-            hidden_size=self.config.hidden_size,
             num_heads=4,
             strategy=args.retrieval_strategy,
             device=self.device
+            # Removed hidden_size parameter if not needed
         )
         
         # Create model adapter for memory integration
