@@ -409,7 +409,7 @@ class AssociativeMemoryDemo:
             hidden_states = all_hidden_states[-1]
             
             # Use mean pooling to get a single vector representation
-            mask = (tokens != self.tokenizer.pad_token_id).float()
+            mask = torch.ones_like(tokens).float()
             memory_vector = (hidden_states * mask.unsqueeze(-1)).sum(1) / mask.sum(1).unsqueeze(-1)
         
         # Add to memory with the text as the key
