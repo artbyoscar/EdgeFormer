@@ -1,73 +1,86 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class ValueEstimator(nn.Module):
+class ImprovedValueEstimator(nn.Module):
     """
-    Estimates the value of the current state for intelligent stopping based on diminishing returns.
+    Enhanced value estimator with pattern recognition capabilities for recurrent depth processing.
     """
     def __init__(self, hidden_size, config=None):
-        """
-        Initialize the value estimator.
-        
-        Args:
-            hidden_size: Size of the hidden representations
-            config: Optional configuration object
-        """
         super().__init__()
+        self.hidden_size = hidden_size
         
-        # Default intermediate size if not specified
-        intermediate_size = getattr(config, 'intermediate_size', hidden_size * 4) if config else hidden_size * 4
+        # Attention-weighted pooling
+        self.attention_query = nn.Parameter(torch.randn(hidden_size))
         
-        # Value estimation network
-        self.value_head = nn.Sequential(
-            nn.Linear(hidden_size, intermediate_size // 4),
-            nn.GELU(),
-            nn.Linear(intermediate_size // 4, 1),
-            nn.Sigmoid()
-        )
+        # Value estimation layers
+        self.dense1 = nn.Linear(hidden_size, hidden_size // 2)
+        self.dense2 = nn.Linear(hidden_size // 2, 1)
+        
+        # Pattern recognition components
+        self.pattern_dense = nn.Linear(hidden_size, hidden_size // 4)
+        self.pattern_classifier = nn.Linear(hidden_size // 4, 1)
         
         # Convergence tracking
         self.prev_values = None
-        self.convergence_threshold = 0.005  # Default threshold
-        self.convergence_patience = 3  # Number of iterations with minimal change to confirm convergence
+        self.convergence_threshold = getattr(config, 'convergence_threshold', 0.005) if config else 0.005
+        self.convergence_patience = 2  # Number of iterations with minimal change to confirm convergence
         self.convergence_counter = 0
         
         # Value history tracking for visualization
         self.value_history = []
     
+    def attention_pooling(self, hidden_states):
+        """Apply attention-weighted pooling to the hidden states."""
+        # Calculate attention scores
+        query = self.attention_query.unsqueeze(0).unsqueeze(0)  # [1, 1, hidden_size]
+        scores = torch.matmul(hidden_states, query.transpose(-1, -2))  # [batch, seq_len, 1]
+        
+        # Apply softmax to get attention weights
+        weights = F.softmax(scores, dim=1)
+        
+        # Apply weights to hidden states
+        weighted = torch.matmul(weights.transpose(-1, -2), hidden_states)  # [batch, 1, hidden_size]
+        
+        return weighted.squeeze(1)  # [batch, hidden_size]
+    
+    def detect_pattern(self, hidden_states):
+        """Detect structured patterns in hidden states."""
+        # Apply pattern detection to each token position
+        batch_size, seq_len, _ = hidden_states.shape
+        pattern_scores = []
+        
+        for i in range(seq_len):
+            x = self.pattern_dense(hidden_states[:, i])
+            x = F.relu(x)
+            pattern_score = torch.sigmoid(self.pattern_classifier(x))
+            pattern_scores.append(pattern_score)
+        
+        # Combine pattern scores
+        combined_score = torch.stack(pattern_scores, dim=1).mean(dim=1)
+        return combined_score
+    
     def forward(self, hidden_states):
-        """
-        Compute value estimate for the given hidden states.
+        """Estimate the value of the hidden states."""
+        # Apply attention pooling
+        pooled = self.attention_pooling(hidden_states)
         
-        Args:
-            hidden_states: Hidden state tensor of shape [batch_size, seq_len, hidden_size]
-            
-        Returns:
-            Tensor of shape [batch_size, 1] with value estimates
-        """
-        # Average pooling across sequence dimension
-        pooled = hidden_states.mean(dim=1)
+        # Get pattern score
+        pattern_score = self.detect_pattern(hidden_states)
         
-        # Compute value
-        value = self.value_head(pooled)
+        # Project to scalar value
+        x = self.dense1(pooled)
+        x = F.relu(x)
+        x = self.dense2(x)
+        base_value = torch.sigmoid(x)  # Normalize to [0, 1]
+        
+        # Combine base value with pattern recognition
+        value = 0.7 * base_value + 0.3 * pattern_score
         
         # Record value in history
         self.value_history.append(value.detach().mean().item())
         
         return value
-    
-    def estimate_confidence(self, hidden_states):
-        """
-        Estimate confidence score (higher value = more confident).
-        For use with budget forcing.
-        
-        Args:
-            hidden_states: Hidden state tensor
-            
-        Returns:
-            Confidence score (0-1)
-        """
-        return self.forward(hidden_states).mean().item()
     
     def check_convergence(self, hidden_states):
         """

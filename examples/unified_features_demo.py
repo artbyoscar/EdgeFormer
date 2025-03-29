@@ -202,7 +202,7 @@ def main():
                 next_token = torch.multinomial(probs[0], 1)
                 
                 # Append to generated sequence
-                generated_ids = torch.cat([generated_ids, next_token.unsqueeze(0)], dim=1)
+                generated_ids = torch.cat([generated_ids, next_token.view(1, 1)], dim=1)
         
         # Convert to text
         generated_text = ""
