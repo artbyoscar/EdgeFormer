@@ -318,14 +318,14 @@ class AssociativeMemoryDemo:
                 head_dim=self.config.hidden_size // self.config.num_attention_heads,
                 device=self.device,
                 enable_offload=True,
-                offload_threshold=args.offload_threshold
+                offload_size_threshold=args.offload_threshold  # Changed from offload_threshold to offload_size_threshold
             )
             self.model.kv_cache_manager = kv_cache_manager
             logger.info(f"KV Cache Manager initialized with offload threshold: {args.offload_threshold}")
         
         # Initialize associative memory
         self.memory = HTPSMemory(
-            memory_size=args.memory_size,
+            capacity=args.memory_size,  # Changed from memory_size to capacity
             hidden_size=self.config.hidden_size,
             strategy=args.memory_strategy,
             device=self.device
