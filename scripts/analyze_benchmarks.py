@@ -57,7 +57,14 @@ def load_benchmark_data(input_dir):
                 if isinstance(data, list):
                     all_results.extend(data)
                 elif isinstance(data, dict) and 'results' in data:
-                    all_results.extend(data['results'])
+                    # For benchmark files with results structure like the ones in your output
+                    for seq_len, result in data['results'].items():
+                        result_copy = result.copy()  # Make a copy of the result
+                        result_copy['sequence_length'] = int(seq_len)  # Add sequence length as a field
+                        result_copy['device'] = data.get('device', 'unknown')  # Add device information
+                        result_copy['model_size'] = data.get('model_size', 'unknown')  # Add model size
+                        result_copy['timestamp'] = data.get('timestamp', '')  # Add timestamp
+                        all_results.append(result_copy)
                 elif isinstance(data, dict):
                     # Single benchmark result
                     all_results.append(data)
@@ -69,14 +76,47 @@ def load_benchmark_data(input_dir):
     if not all_results:
         return None
     
+    # Debug the data types
+    for i in range(len(all_results)):
+        if not isinstance(all_results[i], dict):
+            print(f"Item {i} is not a dictionary: {type(all_results[i])}")
+            # Convert string to dict if needed or remove
+            if isinstance(all_results[i], str):
+                all_results[i] = {"error": all_results[i]}  # Convert to dict with error message
+    
+    # Make sure all items are dictionaries
+    all_results = [item for item in all_results if isinstance(item, dict)]
+    
     # Convert to DataFrame for easier analysis
     df = pd.DataFrame(all_results)
     
-    # Filter out any invalid entries
-    df = df.dropna(subset=['execution_time'])
+    # Map field names - adapt to your benchmark format
+    field_mapping = {
+        'avg_time_seconds': 'execution_time',
+        'tokens_per_second': 'tokens_per_second',
+        'avg_memory_mb': 'memory_usage',
+    }
     
-    # Add derived metrics
-    if 'sequence_length' in df.columns and 'execution_time' in df.columns:
+    # Rename columns according to mapping
+    for old_name, new_name in field_mapping.items():
+        if old_name in df.columns and new_name not in df.columns:
+            df.rename(columns={old_name: new_name}, inplace=True)
+    
+    # Check if we have required fields after mapping
+    required_fields = ['tokens_per_second']  # We'll make this the minimum requirement
+    
+    if not all(field in df.columns for field in required_fields):
+        print(f"Warning: Missing required fields in data. Available columns: {list(df.columns)}")
+        # Try to derive values if possible
+        if 'execution_time' in df.columns and 'sequence_length' in df.columns and 'tokens_per_second' not in df.columns:
+            df['tokens_per_second'] = df['sequence_length'] / df['execution_time']
+    
+    # Don't filter rows if execution_time is not available
+    if 'execution_time' in df.columns:
+        df = df.dropna(subset=['execution_time'])
+    
+    # Add derived metrics if needed
+    if 'sequence_length' in df.columns and 'execution_time' in df.columns and 'tokens_per_second' not in df.columns:
         df['tokens_per_second'] = df['sequence_length'] / df['execution_time']
     
     if 'memory_usage' in df.columns:
