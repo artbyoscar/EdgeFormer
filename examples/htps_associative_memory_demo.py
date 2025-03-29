@@ -356,16 +356,17 @@ class AssociativeMemoryDemo:
         # Initialize associative memory
         self.memory = HTPSMemory(
             capacity=args.memory_size,  # Using capacity instead of memory_size
-            strategy=args.memory_strategy,
-            device=self.device
+            embedding_dim=self.config.hidden_size,
+            selection_strategy=args.memory_strategy
             # Removed hidden_size parameter
         )
         
         # Initialize memory retriever - adjust parameters based on debug output
         self.retriever = MemoryRetriever(
+            hidden_size=self.config.hidden_size,  # This is required
+            memory_size=256,
             num_heads=4,
-            strategy=args.retrieval_strategy,
-            device=self.device
+            dropout=0.1
             # Removed hidden_size parameter if not needed
         )
         
@@ -403,15 +404,9 @@ class AssociativeMemoryDemo:
         
         # Generate embedding for the text
         with torch.no_grad():
-            outputs = self.model(tokens)
-            
-            # Get last layer hidden states
-            if 'hidden_states' in outputs:
-                hidden_states = outputs['hidden_states'][-1]
-            else:
-                # If hidden_states not included in output, get from forward pass
-                _, all_hidden_states = self.model.forward_with_hidden_states(tokens)
-                hidden_states = all_hidden_states[-1]
+            # Use forward_with_hidden_states to get hidden states directly
+            outputs, all_hidden_states = self.model.forward_with_hidden_states(tokens)
+            hidden_states = all_hidden_states[-1]
             
             # Use mean pooling to get a single vector representation
             mask = (tokens != self.tokenizer.pad_token_id).float()
@@ -586,7 +581,7 @@ def main():
     print_header()
     
     # Add a default memory if none was loaded
-    if demo.memory.size() == 0:
+    if len(demo.memory.get_all_entries()) == 0:
         default_memory = """EdgeFormer is a high-performance Transformer implementation optimized to run efficiently 
 on edge devices with limited compute resources. It features Multi-Head Latent Attention (MLA), 
 Grouped-Query Attention (GQA), and HyperTree-inspired budget forcing mechanisms."""
@@ -602,7 +597,7 @@ Grouped-Query Attention (GQA), and HyperTree-inspired budget forcing mechanisms.
                 break
                 
             elif command.lower() == "list":
-                memories = demo.memory.get_all_memories()
+                memories = demo.memory.get_all_entries()
                 print("\nStored Memories:")
                 print("-" * 60)
                 for i, (text, _) in enumerate(memories):

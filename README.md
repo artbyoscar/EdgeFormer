@@ -145,6 +145,10 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 * **Fixed Associative Memory Integration**: Created model adapter for seamless memory integration
 * **Improved Memory Retriever**: Enhanced attention-based memory retrieval with visualization support
 * **Fixed Memory Demo Import Issues**: Resolved import errors in the associative memory demo
+* **Fixed HTPSMemory Initialization**: Updated parameter naming from `strategy` to `selection_strategy` and added correct embedding dimensions
+* **Fixed MemoryRetriever Initialization**: Added required `hidden_size` parameter and removed unsupported parameters
+* **Fixed Associative Memory Demo**: Updated memory methods to use `get_all_entries()` instead of `get_all_memories()`
+* **Fixed Memory Vector Generation**: Corrected `add_memory` method to properly extract hidden states
 
 **🔄 In Progress / Near-Term Focus (Phase 1):**
 
