@@ -4,6 +4,8 @@
 
 *(README updated: Friday, March 28, 2025 at 10:15:00 AM PDT)*
 
+For detailed information on EdgeFormer's advanced features, see [README_features.md](README_features.md).
+
 <p align="center">
   <img src="benchmark_results_20250323-103226/benchmark_comparison.png" alt="EdgeFormer Benchmark Results (AMD Target)" width="600">
   <br><em>Initial benchmarks on AMD Ryzen/Radeon test hardware. Cross-platform results pending.</em>
@@ -690,6 +692,7 @@ Based on our current development status and the integration of HyperTree-inspire
    - Create personalization strategies with minimal memory overhead
    - Implement data privacy mechanisms for local adaptation
    - Benchmark adaptation performance across device profiles
+
 
 ## 🤝 Contributing
 
