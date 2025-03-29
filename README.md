@@ -1,4 +1,4 @@
-Here's the full updated README for your EdgeFormer project:
+I've analyzed both documents and can provide the full updated README for the EdgeFormer project. Here's the complete content:
 
 # EdgeFormer: Efficient Transformer for Edge Devices
 
