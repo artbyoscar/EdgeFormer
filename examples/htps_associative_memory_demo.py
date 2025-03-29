@@ -408,12 +408,13 @@ class AssociativeMemoryDemo:
             outputs, all_hidden_states = self.model.forward_with_hidden_states(tokens)
             hidden_states = all_hidden_states[-1]
             
-            # Use mean pooling to get a single vector representation
+            # For SimpleTokenizer which doesn't have pad_token_id, use another approach
+            # Assume all tokens are valid (no padding)
             mask = torch.ones_like(tokens).float()
             memory_vector = (hidden_states * mask.unsqueeze(-1)).sum(1) / mask.sum(1).unsqueeze(-1)
         
-        # Add to memory with the text as the key
-        self.memory.add_memory(text, memory_vector)
+        # Add to memory with the text as the key (using add_entry instead of add_memory)
+        self.memory.add_entry(text, memory_vector)
         return True
     
     def generate_with_memory(self, prompt, max_length=100):
