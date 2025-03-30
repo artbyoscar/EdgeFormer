@@ -75,78 +75,89 @@ class MemoryRetriever:
     def retrieve_memories(self, query_hidden, memory, top_k=3, capture_attention=False):
         """
         Retrieve relevant memories based on query hidden state.
-        
+    
         Args:
             query_hidden: Query hidden state [batch_size, seq_len, hidden_size]
             memory: HTPSMemory instance
             top_k: Number of memories to retrieve
             capture_attention: Whether to capture attention weights
-            
+        
         Returns:
             memory_vectors: Retrieved memory vectors
             attention_weights: Attention weights over memories
             memory_texts: Text representation of retrieved memories (if capture_attention)
         """
-        if memory.is_empty():
+        # Check if memory has is_empty method or use alternate check
+        is_empty = False
+        if hasattr(memory, 'is_empty'):
+            is_empty = memory.is_empty()
+        elif not hasattr(memory, 'vectors') or len(getattr(memory, 'vectors', [])) == 0:
+            is_empty = True
+    
+        if is_empty:
             logger.debug("Memory is empty, skipping retrieval")
             return None, None, None
-        
+    
         # Project query if needed
         query_vector = self.project_query(query_hidden)
-        
+    
         # Get memory vectors and metadata
-        memory_vectors = memory.get_vectors()
-        memory_texts = memory.get_texts() if capture_attention else None
-        
+        memory_vectors = memory.get_vectors() if hasattr(memory, 'get_vectors') else memory.vectors
+    
+        if capture_attention:
+            memory_texts = memory.get_texts() if hasattr(memory, 'get_texts') else memory.texts
+        else:
+            memory_texts = None
+    
         # Compute similarity
         similarity = self.compute_similarity(query_vector, memory_vectors)
-        
+    
         # Apply temperature
         similarity = similarity / self.temperature
-        
+    
         # Check if any similarity exceeds threshold
         max_similarity, _ = torch.max(similarity, dim=-1)
         if torch.all(max_similarity < self.retrieval_threshold):
             logger.debug(f"No memory exceeded threshold {self.retrieval_threshold}")
             return None, None, None
-        
+    
         # Get top-k memories for each query
         if top_k < similarity.size(-1):
             # Use top-k attention
             top_k_values, top_k_indices = torch.topk(similarity, k=top_k, dim=-1)
-            
+        
             # Create sparse attention weights
             batch_size = similarity.size(0)
             attention_weights = torch.zeros_like(similarity)
-            
+        
             # Set values for top-k indices
             for b in range(batch_size):
                 attention_weights[b, top_k_indices[b]] = top_k_values[b]
-            
+        
             # Apply softmax over selected values
             attention_weights = F.softmax(attention_weights, dim=-1)
         else:
             # Use full softmax if k is large enough
             attention_weights = F.softmax(similarity, dim=-1)
-        
+    
         # Get relevant memory text descriptions if requested
         retrieved_texts = None
         if capture_attention and memory_texts is not None:
             # Find indices with non-zero attention
             batch_size = attention_weights.size(0)
             retrieved_texts = []
-            
+        
             for b in range(batch_size):
                 # Get indices with non-zero attention
                 active_indices = torch.nonzero(attention_weights[b] > 0.01).squeeze(-1)
-                
+            
                 # Get memory texts and attention weights
                 batch_texts = []
                 for idx in active_indices:
                     text = memory_texts[idx]
                     weight = attention_weights[b, idx].item()
                     batch_texts.append((text, weight))
-                
+            
                 retrieved_texts.append(batch_texts)
-        
+    
         return memory_vectors, attention_weights, retrieved_texts
