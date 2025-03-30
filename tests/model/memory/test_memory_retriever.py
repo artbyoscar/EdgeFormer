@@ -59,22 +59,25 @@ class TestMemoryRetriever(unittest.TestCase):
     
     def test_retrieval(self):
         """Test normal memory retrieval."""
+        top_k = 3
         memory_vectors, attention_weights, memory_texts = self.retriever.retrieve_memories(
-            self.query_hidden, self.memory, top_k=3
+            self.query_hidden, self.memory, top_k=top_k
         )
-        
+    
         # Check if memory vectors is the original memory vectors
         self.assertTrue(torch.equal(memory_vectors, self.memory.get_vectors()))
-        
+    
         # Check attention weights shape
         self.assertEqual(attention_weights.shape, (self.batch_size, 10))
-        
+    
         # Check weights sum to 1
         self.assertTrue(torch.allclose(torch.sum(attention_weights, dim=1), torch.ones(self.batch_size)))
-        
-        # Top-k should have only k positive values per row
-        positive_per_row = torch.sum(attention_weights > 0, dim=1)
-        self.assertTrue(torch.all(positive_per_row <= 3))
+    
+        # Count positive values per row
+        for b in range(self.batch_size):
+            positive_count = torch.sum(attention_weights[b] > 0).item()
+            self.assertLessEqual(positive_count, top_k,
+                                 f"Row {b} has {positive_count} positive values, expected <= {top_k}")
     
     def test_attention_capture(self):
         """Test capturing attention for visualization."""
