@@ -14,6 +14,8 @@ from src.model.edgeformer import EdgeFormer, EdgeFormerConfig
 from src.model.associative_memory.htps_memory import HTPSMemory
 from src.model.associative_memory.memory_retriever import MemoryRetriever
 from src.utils.text_dataset import get_tokenizer
+from src.utils.checkpoint_fix import load_checkpoint
+from src.utils.model_optimizer import optimize_model_for_device
 
 # Set up logging
 logging.basicConfig(
@@ -322,13 +324,38 @@ class AssociativeMemoryDemo:
         logger.info(f"Initializing EdgeFormer with {args.attention_type} attention...")
         if args.model_path and os.path.exists(args.model_path):
             logger.info(f"Loading model from {args.model_path}")
-            self.model = EdgeFormer.from_pretrained(args.model_path, self.config)
+            # Use the checkpoint_fix loader instead of from_pretrained
+            checkpoint = load_checkpoint(args.model_path, self.device)
+    
+            if isinstance(checkpoint, dict) and 'config' in checkpoint:
+                # If checkpoint contains config, use that instead
+                logger.info(f"Using configuration from checkpoint")
+                model_config = checkpoint['config']
+                self.model = EdgeFormer(model_config)
+                if 'model_state_dict' in checkpoint:
+                    self.model.load_state_dict(checkpoint['model_state_dict'])
+                elif 'state_dict' in checkpoint:
+                    self.model.load_state_dict(checkpoint['state_dict'])
+            else:
+                # If no config or just a state dict
+                logger.info(f"Using provided configuration with checkpoint weights")
+                self.model = EdgeFormer(self.config)
+                if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                    self.model.load_state_dict(checkpoint['model_state_dict'])
+                elif isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
+                    self.model.load_state_dict(checkpoint['state_dict'])
+                else:
+                    # Assume it's a raw state dict
+                    self.model.load_state_dict(checkpoint)
         else:
             logger.info("Initializing new model")
             self.model = EdgeFormer(self.config)
-        
+
         self.model.to(self.device)
         self.model.eval()
+        
+        # Add this line here
+        self.model = optimize_model_for_device(self.model, self.config)
         
         # Initialize KV Cache Manager if requested
         if args.use_kv_cache:
