@@ -26,8 +26,6 @@ class EdgeFormerConfig:
         memory_strategy="htps",
         # MLA specific
         latent_size=None,  # If None, will default to hidden_size // 4
-        # GQA specific
-        num_key_value_heads=None,  # If None, will default to num_attention_heads // 4
     ):
         """Initialize configuration with default values."""
         self.vocab_size = vocab_size

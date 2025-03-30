@@ -2,7 +2,7 @@
 
 EdgeFormer is a high-performance Transformer implementation optimized to run efficiently on a range of edge devices with limited compute resources. Initially focused on AMD Ryzen/Radeon systems, with active development towards broader hardware support (Intel, ARM) via advanced compiler techniques.
 
-*(README updated: Saturday, March 29, 2025)*
+*(README updated: Saturday, March 30, 2025)*
 
 For detailed information on EdgeFormer's advanced features, see [README_features.md](README_features.md).
 
@@ -123,6 +123,7 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 - **Corrected Base Transformer Implementation**: Fixed issues with EdgeFormerEmbeddings and EdgeFormerSelfAttention classes.
 - **Added Support for Multiple Attention Types**: Integrated standard, MLA, GQA, and sliding window attention patterns.
 - **Created Memory-Model Integration**: Started implementation of the MemoryModelAdapter.
+- **Resolved Dependency Conflicts**: Fixed PyTorch installation and environment setup for reliable development.
 
 ### 🔄 Completed Tasks
 
@@ -131,16 +132,16 @@ EdgeFormer is under active development by Oscar Nunez (art.by.oscar.n@gmail.com)
 # Reinstall PyTorch with specific version
 pip uninstall -y torch torchvision torchaudio
 pip cache purge
-pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
+pip install torch==2.6.0 torchvision torchaudio
 
 # Test PyTorch Installation
-python test_torch.py
+python -c "import torch; print(torch.__version__)"
 ```
 
 #### ✅ Core Model Implementation (Revised)
 ```bash
 # Fixed Core Model Structure
-src/model/transformer/config.py
+src/model/transformer/config.py  # Fixed duplicate parameter issue
 src/model/transformer/embeddings.py  # Corrected implementation
 src/model/transformer/mla.py
 src/model/transformer/base_transformer.py  # Fixed attention implementations
@@ -156,25 +157,15 @@ python examples/htps_associative_memory_demo.py --visualize
 python examples/htps_associative_memory_demo.py --use_recurrent --use_budget --use_kv_cache --visualize
 ```
 
-#### ✅ Device Profiling and Optimization
+#### ✅ Environment Setup and Validation
 ```bash
-# Generate device profile
-python scripts/generate_device_profile.py
+# Create fresh environment
+python -m venv edgeformer_env_fresh
+.\edgeformer_env_fresh\Scripts\activate
 
-# Run power profiling
-python scripts/power_profiler.py --model-size small --sequence-length 1024 --duration 10
-```
-
-#### ✅ Dependency Validation
-```bash
-# Validate and fix dependencies
-python validate_dependencies.py
-```
-
-#### ✅ Mock Implementation Refactoring
-```bash
-# Refactor mock implementations into proper modules
-python refactor_mocks.py
+# Install dependencies with clean environment
+pip install torch numpy
+pip install -r requirements.txt
 ```
 
 ### 🔄 Next Steps
@@ -217,9 +208,13 @@ python refactor_mocks.py
 git clone https://github.com/oscarnunez/EdgeFormer.git
 cd EdgeFormer
 
-# Create a virtual environment
-python -m venv edgeformer_env
-source edgeformer_env/bin/activate  # On Windows: edgeformer_env\Scripts\activate
+# Create a virtual environment (recommended to use a fresh environment)
+python -m venv edgeformer_env_fresh
+.\edgeformer_env_fresh\Scripts\activate  # On Windows
+# Or on Linux/Mac: source edgeformer_env_fresh/bin/activate
+
+# Install PyTorch first to avoid dependency issues
+pip install torch numpy
 
 # Install dependencies
 pip install -r requirements.txt
