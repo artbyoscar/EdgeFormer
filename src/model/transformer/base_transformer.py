@@ -5,29 +5,21 @@ import torch.nn.functional as F
 import math
 from .config import EdgeFormerConfig
 from .mla import MultiHeadLatentAttention
+from .gqa import GroupedQueryAttention
 
 class EdgeFormerEmbeddings(nn.Module):
     """Embeddings for the EdgeFormer model."""
     
     def __init__(self, config):
         super().__init__()
-        self.num_attention_heads = config.num_attention_heads
-        self.attention_head_size = config.hidden_size // config.num_attention_heads
-        self.all_head_size = self.num_attention_heads * self.attention_head_size
-    
-        self.attention_type = config.attention_type
-    
-        if self.attention_type == "mla":
-            # Use Multi-Head Latent Attention
-            self.mla = MultiHeadLatentAttention(config)
-        else:
-            # Standard attention
-            self.query = nn.Linear(config.hidden_size, self.all_head_size)
-            self.key = nn.Linear(config.hidden_size, self.all_head_size)
-            self.value = nn.Linear(config.hidden_size, self.all_head_size)
-    
-        self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
-        self.sliding_window_size = config.sliding_window_size
+        self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
+        self.position_embeddings = nn.Embedding(
+            config.max_position_embeddings, config.hidden_size
+        )
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.register_buffer(
+            "position_ids", torch.arange(config.max_position_embeddings).expand((1, -1))
+        )
         
     def forward(self, input_ids, position_ids=None):
         """Forward pass."""
@@ -49,14 +41,23 @@ class EdgeFormerSelfAttention(nn.Module):
         self.num_attention_heads = config.num_attention_heads
         self.attention_head_size = config.hidden_size // config.num_attention_heads
         self.all_head_size = self.num_attention_heads * self.attention_head_size
-        
-        self.query = nn.Linear(config.hidden_size, self.all_head_size)
-        self.key = nn.Linear(config.hidden_size, self.all_head_size)
-        self.value = nn.Linear(config.hidden_size, self.all_head_size)
-        
-        self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
+    
         self.attention_type = config.attention_type
-        self.sliding_window_size = config.sliding_window_size
+    
+        if self.attention_type == "mla":
+            # Use Multi-Head Latent Attention
+            self.mla = MultiHeadLatentAttention(config)
+        elif self.attention_type == "gqa":
+            # Use Grouped-Query Attention
+            self.gqa = GroupedQueryAttention(config)
+        else:
+            # Standard attention
+            self.query = nn.Linear(config.hidden_size, self.all_head_size)
+            self.key = nn.Linear(config.hidden_size, self.all_head_size)
+            self.value = nn.Linear(config.hidden_size, self.all_head_size)
+    
+        self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
+        self.sliding_window_size = getattr(config, "sliding_window_size", 512)
         
     def transpose_for_scores(self, x):
         """Reshape for multi-head attention."""
@@ -81,6 +82,15 @@ class EdgeFormerSelfAttention(nn.Module):
                 past_key_value,
                 output_attentions,
             )
+        elif self.attention_type == "gqa":
+            return self.gqa(
+                hidden_states,
+                attention_mask,
+                head_mask,
+                past_key_value,
+                output_attentions,
+            )
+            
         mixed_query_layer = self.query(hidden_states)
         
         # If past key value is used, only the last token needs to be processed

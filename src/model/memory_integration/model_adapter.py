@@ -182,4 +182,113 @@ class MemoryModelAdapter:
                     
                     # Combine with original logits (weighted sum)
                     memory_weight = 0.2  # How much to weight the memory
-                    next_token_log
+                    next_token_logits = (1 - memory_weight) * next_token_logits + memory_weight * memory_logits
+            
+            # Apply recurrent processing if enabled
+            if use_recurrent and memory_vectors is not None and len(memory_vectors) > 0:
+                # Iterative refinement of predictions
+                prev_next_token_logits = next_token_logits.clone()
+                iterations = 0
+                
+                while iterations < max_iterations:
+                    iterations += 1
+                    
+                    # Re-retrieve memories with current prediction context
+                    current_hidden = last_token_hidden.clone()
+                    
+                    # Update with current prediction info
+                    if hasattr(self.model, 'lm_head'):
+                        # Get embedding of predicted token
+                        pred_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
+                        pred_embed = self.model.transformer.embeddings.word_embeddings(pred_token)
+                        
+                        # Blend with current hidden state
+                        blend_factor = 0.3
+                        current_hidden = (1 - blend_factor) * current_hidden + blend_factor * pred_embed
+                    
+                    # Re-retrieve with updated context
+                    memory_vectors, attention_weights, memory_texts = self.retriever.retrieve_memories(
+                        current_hidden, self.memory, top_k=3, capture_attention=capture_attention
+                    )
+                    
+                    # Store for visualization
+                    if capture_attention and attention_weights is not None:
+                        self.attention_maps.append(attention_weights)
+                        self.retrieved_memories.append(memory_texts)
+                    
+                    # Skip iteration if no memories retrieved
+                    if memory_vectors is None or len(memory_vectors) == 0:
+                        break
+                    
+                    # Create memory vector
+                    memory_vector = torch.matmul(attention_weights, memory_vectors)
+                    
+                    # Project to vocabulary space
+                    if hasattr(self.model, 'lm_head'):
+                        memory_logits = self.model.lm_head(memory_vector).squeeze(1)
+                        
+                        # Update logits with increasing weight in later iterations
+                        adaptive_weight = min(0.1 + (iterations * 0.05), 0.4)
+                        next_token_logits = (1 - adaptive_weight) * next_token_logits + adaptive_weight * memory_logits
+                    
+                    # Check for convergence
+                    if torch.max(torch.abs(prev_next_token_logits - next_token_logits)) < convergence_threshold:
+                        # Log early convergence
+                        logger.debug(f"Converged after {iterations} iterations")
+                        break
+                    
+                    prev_next_token_logits = next_token_logits.clone()
+                    
+                    # Must complete minimum iterations
+                    if iterations >= min_iterations:
+                        break
+            
+            # Adjust with temperature
+            if temperature > 0:
+                next_token_logits = next_token_logits / temperature
+            
+            # Apply top-k filtering
+            if top_k > 0:
+                indices_to_remove = torch.topk(next_token_logits, k=min(top_k, next_token_logits.size(-1)))[0]
+                if indices_to_remove.size(0) > 0:
+                    min_thresh = indices_to_remove[:, -1].unsqueeze(-1)
+                    next_token_logits = torch.where(
+                        next_token_logits < min_thresh,
+                        torch.full_like(next_token_logits, float("-inf")),
+                        next_token_logits,
+                    )
+            
+            # Apply top-p (nucleus) filtering
+            if top_p < 1.0:
+                sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
+                cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+                
+                # Remove tokens with cumulative probability above the threshold
+                sorted_indices_to_remove = cumulative_probs > top_p
+                # Shift the indices to the right to keep also the first token above the threshold
+                sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                sorted_indices_to_remove[..., 0] = 0
+                
+                # Scatter sorted tensors to original indexing
+                indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+                next_token_logits = torch.where(
+                    indices_to_remove,
+                    torch.full_like(next_token_logits, float("-inf")),
+                    next_token_logits,
+                )
+            
+            # Sample from the filtered distribution
+            if do_sample:
+                probs = torch.softmax(next_token_logits, dim=-1)
+                next_token = torch.multinomial(probs, num_samples=1)
+            else:
+                next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
+            
+            # Update generated and attention mask
+            generated = torch.cat([generated, next_token], dim=1)
+            if attention_mask is not None:
+                attention_mask = torch.cat(
+                    [attention_mask, attention_mask.new_ones((attention_mask.size(0), 1))], dim=1
+                )
+        
+        return generated

@@ -9,6 +9,7 @@ class EdgeFormerConfig:
         hidden_size=768,
         num_hidden_layers=12,
         num_attention_heads=12,
+        num_key_value_heads=None,  # For GQA
         intermediate_size=3072,
         hidden_act="gelu",
         hidden_dropout_prob=0.1,
@@ -33,6 +34,7 @@ class EdgeFormerConfig:
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
+        self.num_key_value_heads = num_key_value_heads  # Add this
         self.intermediate_size = intermediate_size
         self.hidden_act = hidden_act
         self.hidden_dropout_prob = hidden_dropout_prob
@@ -59,6 +61,10 @@ class EdgeFormerConfig:
             self.num_key_value_heads = max(1, num_attention_heads // 4)
         else:
             self.num_key_value_heads = num_key_value_heads
+            
+        # Set default KV heads for GQA if not provided
+        if self.num_key_value_heads is None and attention_type == "gqa":
+            self.num_key_value_heads = max(1, self.num_attention_heads // 4)
     
     @classmethod
     def from_dict(cls, config_dict):
