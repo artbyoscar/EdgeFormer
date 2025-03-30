@@ -1,4 +1,52 @@
+import os
 
+# Create a mock torch.py module in the current directory
+with open('torch.py', 'w', encoding='utf-8') as f:
+    f.write("""
+# Mock PyTorch functionality
+class Tensor:
+    def __init__(self, data):
+        self.data = data
+    
+    def to(self, device):
+        return self
+    
+    def size(self):
+        if isinstance(self.data, list):
+            if isinstance(self.data[0], list):
+                return [len(self.data), len(self.data[0])]
+            return [len(self.data)]
+        return []
+    
+    def float(self):
+        return self
+    
+    def __getitem__(self, idx):
+        return self.data[idx] if isinstance(idx, int) and idx < len(self.data) else self.data
+
+def tensor(data):
+    return Tensor(data)
+
+def ones_like(input_tensor):
+    if hasattr(input_tensor, 'data'):
+        shape = input_tensor.size()
+        if len(shape) == 2:
+            return Tensor([[1.0 for _ in range(shape[1])] for _ in range(shape[0])])
+        return Tensor([1.0 for _ in range(shape[0])])
+    return Tensor([1.0])
+
+def zeros_like(input_tensor):
+    if hasattr(input_tensor, 'data'):
+        shape = input_tensor.size()
+        if len(shape) == 2:
+            return Tensor([[0.0 for _ in range(shape[1])] for _ in range(shape[0])])
+        return Tensor([0.0 for _ in range(shape[0])])
+    return Tensor([0.0])
+""")
+
+# Update our TensorPlaceholder to be more compatible with PyTorch
+with open('src/model/edgeformer.py', 'w', encoding='utf-8') as f:
+    f.write("""
 # Minimal placeholder for EdgeFormer and EdgeFormerConfig
 class EdgeFormerConfig:
     def __init__(self, **kwargs):
@@ -6,54 +54,12 @@ class EdgeFormerConfig:
         self.num_attention_heads = kwargs.get('num_attention_heads', 12)
         self.num_hidden_layers = kwargs.get('num_hidden_layers', 12)
         self.vocab_size = kwargs.get('vocab_size', 32000)
-        self.pad_token_id = 0  # Add pad_token_id
         
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-# Use the mock torch module we created earlier
+# Use the mock torch module we just created
 import torch
-
-class HTPSMemory:
-    def __init__(self, capacity=100, hidden_size=768, selection_strategy='htps'):
-        self.capacity = capacity
-        self.hidden_size = hidden_size
-        self.selection_strategy = selection_strategy
-        self.memory_keys = []
-        self.memory_values = []
-        self.memory_texts = []
-        
-    def add(self, key, value, text):
-        self.memory_keys.append(key)
-        self.memory_values.append(value)
-        self.memory_texts.append(text)
-        
-        # Ensure we don't exceed capacity
-        if len(self.memory_keys) > self.capacity:
-            self.memory_keys.pop(0)
-            self.memory_values.pop(0)
-            self.memory_texts.pop(0)
-    
-    def clear(self):
-        self.memory_keys = []
-        self.memory_values = []
-        self.memory_texts = []
-    
-    def __len__(self):
-        return len(self.memory_texts)
-    
-    def size(self):
-        return len(self.memory_texts)
-
-class MemoryRetriever:
-    def __init__(self, hidden_size, num_attention_heads=4, dropout=0.1):
-        self.hidden_size = hidden_size
-        self.num_attention_heads = num_attention_heads
-        self.dropout = dropout
-    
-    def forward(self, query, memory):
-        # Placeholder for memory retrieval
-        return torch.tensor([0.0]), torch.tensor([0])
 
 class EdgeFormer:
     def __init__(self, config=None):
@@ -143,3 +149,6 @@ class SimpleTokenizer:
             ids = ids[0]
             
         return ''.join([chr(min(i, 127)) for i in ids])
+""")
+
+print("Created mock PyTorch functionality and updated EdgeFormer to use it")
