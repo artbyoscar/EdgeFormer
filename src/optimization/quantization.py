@@ -43,9 +43,9 @@ def quantize_tensor(tensor, bits=8, sym=True, per_channel=True):
     """
     # Determine range based on bits
     if bits == 8:
-        qmin, qmax = -128, 127 if sym else 0, 255
+        qmin, qmax = (-128, 127) if sym else (0, 255)
     elif bits == 4:
-        qmin, qmax = -8, 7 if sym else 0, 15
+        qmin, qmax = (-8, 7) if sym else (0, 15)
     else:
         raise ValueError(f"Unsupported bit width: {bits}")
     

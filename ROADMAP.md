@@ -19,9 +19,9 @@ This document outlines the development roadmap for EdgeFormer, organized into th
 - [ ] Create memory benchmarking suite for accuracy measurements
 
 ### Optimization Capabilities
-- [ ] Implement INT8 quantization for weights and activations
+- [x] Implement INT8 quantization for weights and activations
 - [ ] Implement INT4 quantization for further compression
-- [ ] Create KV cache offloading manager for CPU RAM utilization
+- [x] Create KV cache offloading manager for CPU RAM utilization
 - [ ] Implement memory-aware sequence chunking for long contexts
 - [ ] Add budget forcing mechanism for compute allocation
 - [ ] Develop device profiling tool for hardware-specific optimization
@@ -44,7 +44,7 @@ This document outlines the development roadmap for EdgeFormer, organized into th
 
 ### Industry Integration Tools
 - [x] Create healthcare ECG analysis demo
-- [ ] Develop manufacturing defect detection module
+- [x] Develop manufacturing defect detection module
 - [ ] Implement automotive multi-camera processing demo
 - [ ] Create deployment tools for each vertical
 - [ ] Build monitoring dashboard for production deployments
@@ -97,12 +97,14 @@ This document outlines the development roadmap for EdgeFormer, organized into th
 
 The following items are the immediate development priorities:
 
-1. Complete Grouped-Query Attention (GQA) implementation
-2. Implement INT8 quantization for model weights
-3. Create KV cache offloading manager
-4. Finish recurrent memory processing for HTPS
-5. Create manufacturing vertical demo
-6. Implement cross-device benchmarking suite
+1. ~~Complete Grouped-Query Attention (GQA) implementation~~ ✅
+2. ~~Implement INT8 quantization for model weights~~ ✅
+3. ~~Create KV cache offloading manager~~ ✅
+4. ~~Create manufacturing vertical demo~~ ✅
+5. Fix memory retriever implementation in test suite
+6. Implement INT4 quantization building on INT8 work
+7. Integrate GQA with base transformer
+8. Create cross-device benchmarking suite
 
 ## Contribution Guidelines
 
@@ -116,8 +118,8 @@ When contributing to this roadmap:
 ## Status Tracking
 
 Overall Project Status:
-- Phase 1: ~35% Complete
-- Phase 2: ~5% Complete
+- Phase 1: ~50% Complete
+- Phase 2: ~10% Complete
 - Phase 3: Planning Stage
 
 Last Updated: March 30, 2025
