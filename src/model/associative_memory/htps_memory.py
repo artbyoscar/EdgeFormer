@@ -1,182 +1,160 @@
-# src/model/associative_memory/htps_memory.py
+# Save as memory/htps_memory.py
 
-import torch
+import logging
 import numpy as np
-from collections import deque
+import torch
+from typing import List, Tuple, Dict, Any, Optional
+
+logger = logging.getLogger('edgeformer')
 
 class HTPSMemory:
     """
-    HyperTree-inspired memory storage with multiple selection strategies.
-    
-    This class provides a simple but effective memory system that stores embeddings
-    and their associated text, with multiple strategies for selecting which memories
-    to retain and retrieve.
+    Hyper-Tree Parameter Selection (HTPS) associative memory implementation.
+    Provides efficient memory storage and retrieval for enhanced reasoning.
     """
     
     def __init__(self, capacity=100, hidden_size=768, selection_strategy='htps'):
         """
-        Initialize the memory storage.
+        Initialize the HTPS memory module.
         
         Args:
-            capacity (int): Maximum number of entries in memory
-            embedding_dim (int): Dimension of embedding vectors
-            selection_strategy (str): Strategy for selecting memories to keep/retrieve
-                Options: 'importance', 'recency', 'frequency', 'htps'
+            capacity: Maximum number of memories to store
+            hidden_size: Dimension of memory embeddings
+            selection_strategy: Strategy for memory selection ('htps', 'recency', 'random')
         """
         self.capacity = capacity
-        self.embedding_dim = hidden_size  # Store the hidden_size as embedding_dim
+        self.hidden_size = hidden_size
         self.selection_strategy = selection_strategy
         
-        # Storage for memory entries
-        self.embeddings = []  # List of embedding vectors
-        self.texts = []       # List of text entries
-        self.metadata = []    # List of metadata dicts
+        # Initialize memory storage as a list of (text, vector) tuples
+        self.memories = []
         
-        # Initialize metadata keys based on selection strategy
-        self.metadata_keys = ['importance', 'recency', 'access_count', 'last_access_time']
+        logger.info(f"Initialized HTPSMemory with capacity={capacity}, hidden_size={hidden_size}")
     
-    def __len__(self):
-        """Return the number of entries in memory."""
-        return len(self.embeddings)
-    
-    def add_entry(self, embedding, text, importance=0.5):
+    def add_entry(self, text, vector):
         """
-        Add a new entry to memory.
+        Add a new memory entry.
         
         Args:
-            embedding (torch.Tensor or numpy.ndarray): Embedding vector for the entry
-            text (str): Text associated with the embedding
-            importance (float): Initial importance score (0-1)
-        """
-        # Convert embedding to numpy if it's a torch tensor
-        if isinstance(embedding, torch.Tensor):
-            embedding = embedding.detach().cpu().numpy()
-        
-        # Create metadata
-        metadata = {
-            'importance': importance,
-            'recency': 1.0,  # New entries are most recent
-            'access_count': 0,
-            'last_access_time': 0,
-            'creation_time': len(self.embeddings)  # Use entry index as time proxy
-        }
-        
-        # Add entry
-        self.embeddings.append(embedding)
-        self.texts.append(text)
-        self.metadata.append(metadata)
-        
-        # Update recency scores for all entries
-        self._update_recency()
-        
-        # If over capacity, remove entries according to selection strategy
-        if len(self.embeddings) > self.capacity:
-            self._prune_memory()
-    
-    def clear(self):
-        """Clear all entries from memory."""
-        self.embeddings = []
-        self.texts = []
-        self.metadata = []
-    
-    def _update_recency(self):
-        """Update recency scores for all entries."""
-        # Newest entry already has recency=1, decrement older entries
-        decay_factor = 0.99
-        for i in range(len(self.metadata) - 1):
-            self.metadata[i]['recency'] *= decay_factor
-    
-    def _prune_memory(self):
-        """Remove entries according to the selection strategy."""
-        if self.selection_strategy == 'importance':
-            # Remove least important entry
-            scores = [meta['importance'] for meta in self.metadata]
-        elif self.selection_strategy == 'recency':
-            # Remove oldest entry
-            scores = [meta['recency'] for meta in self.metadata]
-        elif self.selection_strategy == 'frequency':
-            # Remove least accessed entry
-            scores = [meta['access_count'] for meta in self.metadata]
-        elif self.selection_strategy == 'htps':
-            # HyperTree-inspired combined strategy
-            scores = []
-            for meta in self.metadata:
-                # Combine importance, recency and frequency with weights
-                score = (
-                    0.4 * meta['importance'] + 
-                    0.3 * meta['recency'] + 
-                    0.3 * (meta['access_count'] / (max(1, max(m['access_count'] for m in self.metadata))))
-                )
-                scores.append(score)
-        else:
-            # Default to recency
-            scores = [meta['recency'] for meta in self.metadata]
-        
-        # Find index of the entry with lowest score
-        min_idx = scores.index(min(scores))
-        
-        # Remove the entry
-        self.embeddings.pop(min_idx)
-        self.texts.pop(min_idx)
-        self.metadata.pop(min_idx)
-    
-    def retrieve(self, query_embedding, k=5):
-        """
-        Retrieve the k most relevant memories for a query.
-        
-        Args:
-            query_embedding (torch.Tensor or numpy.ndarray): Query embedding vector
-            k (int): Number of memories to retrieve
-        
+            text: The memory text
+            vector: The embedding vector
+            
         Returns:
-            tuple: (retrieved_embeddings, retrieval_scores, retrieved_texts)
+            bool: Success status
         """
-        if not self.embeddings:
-            # Return empty results if no memories
-            return torch.tensor([]), torch.tensor([]), []
+        # Check if at capacity
+        if len(self.memories) >= self.capacity:
+            # Remove the oldest memory if at capacity
+            self.memories.pop(0)
         
-        # Convert query to numpy if it's a torch tensor
-        if isinstance(query_embedding, torch.Tensor):
-            query_np = query_embedding.detach().cpu().numpy()
+        # Add the new memory
+        self.memories.append((text, vector))
+        
+        return True
+    
+    def add_memory(self, text):
+        """
+        Legacy method for compatibility - creates a mock vector
+        
+        Args:
+            text: The memory text
+            
+        Returns:
+            bool: Success status
+        """
+        # Create a mock embedding for compatibility
+        if torch.cuda.is_available():
+            mock_vector = torch.randn(1, self.hidden_size).cuda()
         else:
-            query_np = query_embedding
+            mock_vector = torch.randn(1, self.hidden_size)
         
-        # Calculate cosine similarity
-        similarities = []
-        for idx, emb in enumerate(self.embeddings):
-            # L2 normalize embeddings
-            emb_norm = emb / (np.linalg.norm(emb) + 1e-9)
-            query_norm = query_np / (np.linalg.norm(query_np) + 1e-9)
-            
-            # Calculate cosine similarity
-            similarity = np.dot(emb_norm, query_norm)
-            similarities.append(similarity)
-            
-            # Update metadata for this entry
-            self.metadata[idx]['access_count'] += 1
-            self.metadata[idx]['last_access_time'] = max(m['last_access_time'] for m in self.metadata) + 1
-        
-        # Convert to torch tensor for easier manipulation
-        similarity_scores = torch.tensor(similarities)
-        
-        # Get top k indices
-        k = min(k, len(self.embeddings))
-        topk_values, topk_indices = torch.topk(similarity_scores, k)
-        
-        # Gather results
-        retrieved_embeddings = [self.embeddings[i] for i in topk_indices]
-        retrieved_texts = [self.texts[i] for i in topk_indices]
-        
-        # Convert retrieved embeddings to torch tensor
-        retrieved_embeddings_tensor = torch.tensor(np.stack(retrieved_embeddings))
-        
-        return retrieved_embeddings_tensor, topk_values, retrieved_texts
+        return self.add_entry(text, mock_vector)
     
     def get_all_entries(self):
         """
-        Return all memory entries with their importance scores.
+        Get all memory entries.
         
         Returns:
-            list: List of (importance, text) tuples
+            list: List of (text, vector) tuples
         """
-        return [(meta['importance'], text) for meta, text in zip(self.metadata, self.texts)]
+        return self.memories
+    
+    def get_relevant_memories(self, query_vector, top_k=3):
+        """
+        Get the most relevant memories for a query.
+        
+        Args:
+            query_vector: The query embedding
+            top_k: Number of top memories to retrieve
+            
+        Returns:
+            list: List of (text, vector, score) tuples
+        """
+        if not self.memories:
+            return []
+        
+        results = []
+        
+        if self.selection_strategy == 'htps':
+            # HTPS strategy: Combine importance and recency
+            # Here we use a simple implementation - in a real system this would be more sophisticated
+            
+            # Compute similarity scores
+            scores = []
+            for text, vector in self.memories:
+                # Ensure vectors are the right shape for similarity calculation
+                q_vec = query_vector.view(-1, self.hidden_size)
+                m_vec = vector.view(-1, self.hidden_size)
+                
+                # Compute cosine similarity
+                similarity = torch.nn.functional.cosine_similarity(q_vec, m_vec)
+                scores.append(similarity.item())
+            
+            # Combine with recency (more recent = higher score)
+            for i, (score, (text, vector)) in enumerate(zip(scores, self.memories)):
+                # Add recency bias
+                recency_boost = i / len(self.memories)
+                combined_score = 0.7 * score + 0.3 * recency_boost
+                results.append((text, vector, combined_score))
+            
+            # Sort by combined score (descending)
+            results.sort(key=lambda x: x[2], reverse=True)
+            
+        elif self.selection_strategy == 'recency':
+            # Recency strategy: Return the most recent memories
+            for i, (text, vector) in enumerate(reversed(self.memories)):
+                results.append((text, vector, 1.0 - i/len(self.memories)))
+                
+        else:
+            # Default to similarity-based retrieval
+            for text, vector in self.memories:
+                # Ensure vectors are the right shape for similarity calculation
+                q_vec = query_vector.view(-1, self.hidden_size)
+                m_vec = vector.view(-1, self.hidden_size)
+                
+                # Compute cosine similarity
+                similarity = torch.nn.functional.cosine_similarity(q_vec, m_vec)
+                results.append((text, vector, similarity.item()))
+            
+            # Sort by similarity score (descending)
+            results.sort(key=lambda x: x[2], reverse=True)
+        
+        # Return top-k results
+        return results[:top_k]
+    
+    def clear(self):
+        """Clear all memories."""
+        self.memories = []
+        return True
+    
+    def list_memories(self):
+        """Return a list of all memory texts (for compatibility)."""
+        return [text for text, _ in self.memories]
+    
+    def clear_memories(self):
+        """Clear all memories (for compatibility)."""
+        return self.clear()
+    
+    def size(self):
+        """Return the number of stored memories."""
+        return len(self.memories)
