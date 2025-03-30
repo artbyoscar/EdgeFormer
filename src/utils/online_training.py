@@ -266,11 +266,12 @@ class OnlineTrainer:
         if "loss" in outputs:
             loss = outputs["loss"]
         else:
-            logger.warning("Loss not found in training output")
+            logger.warning("Loss not found in training output; skipping update.")
             loss = None  # Optionally, you can choose to skip this update if loss is None
 
         # If loss is None, you might want to return early or handle it differently
         if loss is None:
+            logger.info("Update skipped due to missing loss.")
             return
 
         

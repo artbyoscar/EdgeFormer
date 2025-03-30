@@ -30,6 +30,7 @@ class EdgeFormerEmbeddings(nn.Module):
         # Initialize kv_cache_manager attribute
         self.kv_cache_manager = None
         self.config = config  # Also need to store config for later use
+        self._device = torch.device("cpu")
 
     def forward(self, input_ids=None, position_ids=None, inputs_embeds=None):
         # Initialize KV Cache Manager if needed
@@ -215,6 +216,7 @@ class EdgeFormer(nn.Module):
     # Add the to() method here
     def to(self, device):
         """Override to method to update internal device tracker."""
+        self._device = torch.device(device) if isinstance(device, str) else device
         # Call the parent class implementation
         result = super().to(device)
         
