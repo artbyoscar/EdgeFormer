@@ -44,14 +44,25 @@ class GroupedQueryAttention(nn.Module):
     def repeat_kv_heads(self, hidden_states):
         """Repeat KV heads to match the number of query heads."""
         batch_size, seq_length, _ = hidden_states.size()
-        hidden_states = hidden_states.view(batch_size, seq_length, self.num_key_value_heads, self.attention_head_size)
         
-        # Repeat each KV head num_queries_per_kv times
-        hidden_states = hidden_states.repeat(1, 1, self.num_queries_per_kv, 1)
+        # Reshape to extract the key/value heads
+        hidden_states = self.transpose_for_scores(hidden_states, self.num_key_value_heads)
         
-        # Re-shape to standard format
-        hidden_states = hidden_states.view(batch_size, seq_length, self.num_attention_heads, self.attention_head_size)
-        return hidden_states.permute(0, 2, 1, 3)
+        # Create a new tensor with repeated KV heads
+        expanded_shape = (
+            batch_size,
+            self.num_attention_heads,
+            seq_length,
+            self.attention_head_size
+        )
+        expanded = torch.zeros(expanded_shape, dtype=hidden_states.dtype, device=hidden_states.device)
+        
+        # For each query head, copy the appropriate KV head
+        for q_idx in range(self.num_attention_heads):
+            kv_idx = q_idx // self.num_queries_per_kv
+            expanded[:, q_idx, :, :] = hidden_states[:, kv_idx, :, :]
+        
+        return expanded
     
     def forward(
         self,
@@ -66,10 +77,16 @@ class GroupedQueryAttention(nn.Module):
         
         # If past key value is used, only process the last token
         if past_key_value is not None:
-            mixed_query_layer = mixed_query_layer[:, -1:, :]
-            past_key, past_value = past_key_value
-            key_layer = past_key
-            value_layer = past_value
+            if isinstance(past_key_value, tuple) and len(past_key_value) == 2:
+                # Standard format
+                past_key, past_value = past_key_value
+                mixed_query_layer = mixed_query_layer[:, -1:, :]
+                key_layer = past_key
+                value_layer = past_value
+            else:
+                # Handle empty past_key_value
+                key_layer = self.transpose_for_scores(self.key(hidden_states), self.num_key_value_heads)
+                value_layer = self.transpose_for_scores(self.value(hidden_states), self.num_key_value_heads)
         else:
             # Project keys and values (fewer heads)
             key_layer = self.transpose_for_scores(self.key(hidden_states), self.num_key_value_heads)
@@ -109,9 +126,12 @@ class GroupedQueryAttention(nn.Module):
         new_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_shape)
         
-        outputs = (context_layer, attention_probs) if output_attentions else (context_layer,)
+        # Create outputs tuple
+        outputs = (context_layer,)
+        if output_attentions:
+            outputs = outputs + (attention_probs,)
         
-        # Cache the original KV with reduced heads
+        # Always include past_key_value in the outputs
         past_key_value = (key_layer, value_layer)
         outputs = outputs + (past_key_value,)
         

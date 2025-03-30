@@ -27,6 +27,7 @@ class EdgeFormerConfig:
         quantization="int8",  # Options: None, "int8", "int4"
         optimize_for_rdna3=True,  # RDNA3-specific optimizations
         debug_mode=False,  # For logging
+        num_key_value_heads=None,  # For GQA, defaults to num_attention_heads/4
         # Budget forcing settings
         enable_budget_forcing=False,
         max_budget_tokens=2048,
@@ -143,6 +144,13 @@ class EdgeFormerConfig:
         self.max_iterations = max_iterations
         self.convergence_threshold = convergence_threshold
         self.adaptive_iterations = adaptive_iterations
+        
+        # Set up GQA parameters
+        self.attention_type = attention_type
+        self.num_attention_heads = num_attention_heads
+        self.num_key_value_heads = num_key_value_heads
+        if attention_type == "gqa" and self.num_key_value_heads is None:
+            self.num_key_value_heads = max(1, self.num_attention_heads // 4)
         
         # Validate settings
         self._validate_config()
