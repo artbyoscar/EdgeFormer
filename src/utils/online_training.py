@@ -263,7 +263,16 @@ class OnlineTrainer:
         
         # Forward pass
         outputs = self.model(input_ids=input_ids, labels=labels)
-        loss = outputs.loss
+        if "loss" in outputs:
+            loss = outputs["loss"]
+        else:
+            logger.warning("Loss not found in training output")
+            loss = None  # Optionally, you can choose to skip this update if loss is None
+
+        # If loss is None, you might want to return early or handle it differently
+        if loss is None:
+            return
+
         
         # Backward pass
         self.optimizer.zero_grad()

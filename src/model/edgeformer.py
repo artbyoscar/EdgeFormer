@@ -600,7 +600,8 @@ class EdgeFormer(nn.Module):
   
     def generate(
         self,
-        input_text,
+        input_text=None,
+        input_ids=None,
         attention_mask=None,
         max_length=100,
         temperature=1.0,
@@ -614,26 +615,7 @@ class EdgeFormer(nn.Module):
         budget_manager=None,
         task_complexity=None,
     ):
-        """Generate text using the model with optional budget management.
-
-        Args:
-            input_text: Either a string or tokenized input_ids tensor
-            attention_mask: Optional attention mask
-            max_length: Maximum length of the generated sequence
-            temperature: Temperature for sampling
-            top_k: Top-k sampling parameter
-            top_p: Top-p (nucleus) sampling parameter
-            repetition_penalty: Penalty for repeating tokens
-            do_sample: Whether to sample or use greedy decoding
-            num_return_sequences: Number of sequences to return
-            pad_token_id: Token ID for padding
-            eos_token_id: Token ID for end of sequence
-            budget_manager: Optional HTPSBudgetManager for controlling compute
-            task_complexity: Optional task complexity score for budget management
-    
-        Returns:
-            Generated text
-        """
+        """Generate text using the model with optional budget management."""
         self.eval()
         device = next(self.parameters()).device
 
@@ -642,21 +624,22 @@ class EdgeFormer(nn.Module):
         if using_budget:
             budget_manager.reset()
 
-        # Handle string input by tokenizing it
-        if isinstance(input_text, str):
-            # If we're using character-level tokenization, convert string to tokens
-            if hasattr(self, 'char_to_idx'):
-                tokens = [self.char_to_idx.get(c, 0) for c in input_text]
+        # Resolve input_ids: use provided input_ids or tokenize input_text
+        if input_ids is None:
+            if isinstance(input_text, str):
+                # If using character-level tokenization
+                if hasattr(self, 'char_to_idx'):
+                    tokens = [self.char_to_idx.get(c, 0) for c in input_text]
+                else:
+                    # Fallback: simple character encoding
+                    tokens = [ord(c) % self.config.vocab_size for c in input_text]
                 input_ids = torch.tensor([tokens], dtype=torch.long, device=device)
             else:
-                # Fallback to simple character encoding
-                tokens = [ord(c) % self.config.vocab_size for c in input_text]
-                input_ids = torch.tensor([tokens], dtype=torch.long, device=device)
+                raise ValueError("Must provide either input_text or input_ids")
         else:
-            # Use provided tensor
-            input_ids = input_text
+            # Ensure input_ids has a batch dimension
             if input_ids.dim() == 1:
-                input_ids = input_ids.unsqueeze(0)  # Add batch dimension
+                input_ids = input_ids.unsqueeze(0)
 
         # Store the prompt for later reconstruction
         prompt_length = input_ids.shape[1]
@@ -798,19 +781,16 @@ class EdgeFormer(nn.Module):
             # Update past key values
             past_key_values = outputs.get("past_key_values", None)
 
-        # Convert back to text if input was string
-        if isinstance(input_text, str):
+         # Convert token IDs back to text if the original input was a string
+        if input_text is not None:
             generated_text = ""
             for token_idx in input_ids[0]:
                 if hasattr(self, 'idx_to_char'):
-                    # If we have a character mapping, use it
                     generated_text += self.idx_to_char.get(token_idx.item(), '')
                 else:
-                    # Fallback to simple ASCII
                     generated_text += chr(token_idx.item() % 128)
             return generated_text
         else:
-            # Return tensor if input was tensor
             return input_ids
     
     def continue_generation(self, new_tokens, past_key_values):
