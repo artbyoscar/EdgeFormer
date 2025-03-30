@@ -239,13 +239,13 @@ def quantize_edgeformer(model, bits=8, sym=True, per_channel=True):
     Returns:
         model: Quantized model
     """
-    config = QuantizationConfig(
-        bits=bits,
-        quantize_weights=True,
-        quantize_activations=False,
-        sym=sym,
-        per_channel=per_channel,
-    )
+    # Import here to avoid circular imports
+    from .dynamic_quantization import DynamicQuantizer
     
-    quantizer = Quantizer(config)
-    return quantizer.quantize_model(model)
+    if bits == 8:
+        return DynamicQuantizer.quantize_model_int8(model)
+    elif bits == 4:
+        return DynamicQuantizer.quantize_model_int4(model)
+    else:
+        logger.warning(f"Unsupported bit width: {bits}, using 8 bits")
+        return DynamicQuantizer.quantize_model_int8(model)

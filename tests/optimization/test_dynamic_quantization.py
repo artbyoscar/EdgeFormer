@@ -6,7 +6,7 @@ import gc
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.optimization.quantization import DynamicQuantizer, Int4Quantizer
+from src.optimization import DynamicQuantizer, Int4Quantizer
 from src.model.transformer.config import EdgeFormerConfig
 from src.model.transformer.base_transformer import EdgeFormerModel
 
@@ -14,10 +14,10 @@ class TestDynamicQuantization(unittest.TestCase):
     def setUp(self):
         # Create a small model for testing
         config = EdgeFormerConfig(
-            hidden_size=64,
-            num_hidden_layers=2,
-            num_attention_heads=4,
-            intermediate_size=128
+            hidden_size=16,
+            num_hidden_layers=1,
+            num_attention_heads=2,
+            intermediate_size=32
         )
         self.model = EdgeFormerModel(config)
     

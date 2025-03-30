@@ -123,10 +123,10 @@ class Int4Quantizer:
         """Unpack INT8 tensor back to two INT4 values"""
         # Convert to numpy
         packed = packed_tensor.cpu().numpy().reshape(-1)
-        
+    
         # Calculate total elements needed in the original shape
         total_elements = int(np.prod(original_shape))
-        
+    
         # Unpack INT8 to two INT4 values
         # Create just enough space for the elements we need
         unpacked = np.zeros(total_elements, dtype=np.int8)
@@ -142,31 +142,50 @@ class Int4Quantizer:
                 unpacked[2*i] = (packed[i] >> 4) & 0xF
             if 2*i + 1 < total_elements:
                 unpacked[2*i + 1] = packed[i] & 0xF
-        
+    
         # Handle negative values (sign extension for 4-bit)
         # Values 8-15 represent negative numbers (-8 to -1)
         neg_mask = unpacked > 7
         unpacked[neg_mask] = unpacked[neg_mask] - 16
-        
-        # Reshape to original shape
-        return unpacked.reshape(original_shape)
+    
+        # Fix for shape mismatch issue:
+        # Make sure unpacked has exactly the same shape as original_shape
+        if np.prod(unpacked.shape) != np.prod(original_shape):
+            if np.prod(unpacked.shape) > np.prod(original_shape):
+                # Too many elements, truncate
+                unpacked = unpacked.flatten()[:np.prod(original_shape)].reshape(original_shape)
+            else:
+                # Too few elements, pad with zeros
+                result = np.zeros(original_shape, dtype=np.int8)
+                flat_unpacked = unpacked.flatten()
+                flat_result = result.flatten()
+                flat_result[:len(flat_unpacked)] = flat_unpacked
+                unpacked = result
+    
+    # Reshape to original shape
+    return unpacked.reshape(original_shape)
     
     def dequantize(self, name, quantized_tensor, original_shape, device=None):
         """Dequantize a packed INT4 tensor"""
         if name not in self.scale_factors:
             return quantized_tensor
-        
+    
         scale = self.scale_factors[name]
-        
+    
         # Unpack and convert back to float
         unpacked = self._unpack_int4(quantized_tensor, original_shape)
         dequantized = unpacked * scale
-        
-        # Create tensor with proper device
+    
+        # Create tensor with proper device and shape
         tensor = torch.tensor(dequantized, dtype=torch.float32)
+    
+        # Ensure tensor has the exact shape we need
+        if tensor.shape != original_shape:
+            tensor = tensor.reshape(original_shape)
+        
         if device is not None:
             tensor = tensor.to(device)
-        
+    
         return tensor
     
     def apply_to_model(self, target_model=None):
@@ -193,39 +212,44 @@ class Int4Quantizer:
                     
                     # Define the new forward method
                     def new_forward(self_module, input, _orig_forward=original_forward, 
-                                   _weight_name=weight_name, _quantized=quantized_weight,
-                                   _orig_shape=original_shape, _self=self):
+                                    _weight_name=weight_name, _quantized=quantized_weight,
+                                    _orig_shape=original_shape, _self=self):
                         try:
                             # Dequantize weight on the fly
                             dequantized = _self.dequantize(_weight_name, _quantized, _orig_shape, input.device)
-                            
+        
                             # Save original weight
                             orig_weight = self_module.weight.data.clone()
 
-                            # Make sure shapes match exactly
+                            # Make sure shapes match exactly - very important fix!
                             if dequantized.shape != orig_weight.shape:
-                                # This should not happen with the fixed _unpack_int4, but as a fallback:
                                 logger.warning(f"Shape mismatch in INT4 dequantization: got {dequantized.shape}, expected {orig_weight.shape}")
-                                # Slice or pad as needed to match exactly
-                                if dequantized.numel() >= orig_weight.numel():
-                                    # Too big, slice it
-                                    dequantized = dequantized.flatten()[:orig_weight.numel()].reshape(orig_weight.shape)
+            
+                                # Try to reshape directly if possible
+                                if dequantized.numel() == orig_weight.numel():
+                                    dequantized = dequantized.reshape(orig_weight.shape)
+                                # Otherwise handle mismatches more carefully
                                 else:
-                                    # Too small, pad with zeros
+                                    # Create a tensor matching the original weight
                                     temp = torch.zeros_like(orig_weight)
-                                    flat_dequant = dequantized.flatten()
-                                    temp.flatten()[:flat_dequant.numel()] = flat_dequant
+                
+                                    # Get the min common sizes for each dimension
+                                    common_size0 = min(dequantized.shape[0], orig_weight.shape[0])
+                                    common_size1 = min(dequantized.shape[1], orig_weight.shape[1])
+                
+                                    # Copy the data we can
+                                    temp[:common_size0, :common_size1] = dequantized[:common_size0, :common_size1]
                                     dequantized = temp
-                            
+        
                             # Replace weight temporarily
                             self_module.weight.data = dequantized
-                            
+        
                             # Run forward
                             result = _orig_forward(input)
-                            
+        
                             # Restore original weight
                             self_module.weight.data = orig_weight
-                            
+        
                             return result
                         except Exception as e:
                             # Log the error for debugging

@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.model.transformer.config import EdgeFormerConfig
 from src.model.transformer.base_transformer import EdgeFormerModel
-from src.optimization.quantization import DynamicQuantizer, measure_model_size
+from src.optimization import DynamicQuantizer, measure_model_size
 
 def benchmark_model(model, input_ids, num_runs=5):
     """Benchmark a model's inference time."""
