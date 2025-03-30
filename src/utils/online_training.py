@@ -400,37 +400,49 @@ class OnlineTrainer:
         """
         # Create timestamp
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        
+    
         # Create checkpoint directory
         checkpoint_dir = Path(self.config['checkpoint_dir'])
         os.makedirs(checkpoint_dir, exist_ok=True)
-        
-        # Save model
+    
+        # Get model configuration
+        if hasattr(self.model, 'config'):
+            # Get only the standard attributes from config to avoid serialization issues
+            config_dict = {k: v for k, v in self.model.config.__dict__.items() 
+                        if not k.startswith('_') and not callable(v)}
+        else:
+            config_dict = None
+    
+        # Save model with configuration
+        checkpoint = {
+            'model_state_dict': self.model.state_dict(),
+            'config': config_dict
+        }
+    
         model_path = checkpoint_dir / f"model_{timestamp}.pt"
-        torch.save(self.model.state_dict(), model_path)
-        
+        torch.save(checkpoint, model_path)
+    
         # Save latest symlink
         latest_path = checkpoint_dir / "model_latest.pt"
         if os.path.exists(latest_path):
             os.remove(latest_path)
         shutil.copy2(model_path, latest_path)  # Use copy instead of symlink
-        
-        # Save training state
+    
+        # Save training state without optimizer state to avoid serialization issues
         state = {
             'timestamp': timestamp,
             'stats': self.stats,
-            'config': self.config,
-            'buffer_size': len(self.buffer),
-            'optimizer_state': self.optimizer.state_dict()
+            'config': {k: v for k, v in self.config.items() if not isinstance(v, torch.Tensor) and not callable(v)},
+            'buffer_size': len(self.buffer)
         }
-        
+    
         state_path = checkpoint_dir / f"state_{timestamp}.json"
         with open(state_path, 'w') as f:
             json.dump(state, f, indent=2)
-        
+    
         # Update statistics
         self.stats['last_checkpoint_time'] = time.time()
-        
+    
         logger.info(f"Checkpoint saved to {model_path}")
     
     def load_checkpoint(self, path=None):

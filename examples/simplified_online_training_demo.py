@@ -11,6 +11,7 @@ python examples/simplified_online_training_demo.py --model_path checkpoints/mode
 """
 
 import os
+import inspect
 import sys
 import argparse
 try:
@@ -66,23 +67,30 @@ class OnlineTrainingDemo:
         self.history = []
     
     def load_model(self):
-        """Load pre-trained EdgeFormer model"""
+        """Load pre-trained EdgeFormer model with consistent configuration"""
+        # Store the configuration that will be used
+        config = None
+    
         if self.args.model_path and os.path.exists(self.args.model_path):
             logger.info(f"Loading model from {self.args.model_path}")
-            
+        
             # Load model with config
             checkpoint = torch.load(self.args.model_path, map_location='cpu')
-            
+        
             if isinstance(checkpoint, dict) and 'config' in checkpoint:
                 # Load from training checkpoint
                 config_dict = checkpoint['config']
                 if isinstance(config_dict, dict):
-                    config = EdgeFormerConfig(**config_dict)
+                    # Filter out unknown arguments
+                    known_args = [p.name for p in inspect.signature(EdgeFormerConfig.__init__).parameters.values()]
+                    filtered_config = {k: v for k, v in config_dict.items() if k in known_args}
+                    config = EdgeFormerConfig(**filtered_config)  # Use filtered_config, not config_dict
+                    logger.info(f"Loaded filtered config from checkpoint with hidden_size={config.hidden_size}")
                 else:
                     config = config_dict
                 
-                self.model = EdgeFormer(config)
-                self.model.load_state_dict(checkpoint['model_state_dict'])
+                # Log the loaded configuration
+                logger.info(f"Loaded config from checkpoint with hidden_size={config.hidden_size}")
             else:
                 # Load from regular checkpoint
                 # Try to find config file
@@ -92,34 +100,69 @@ class OnlineTrainingDemo:
                     with open(config_path, 'r') as f:
                         config_dict = json.load(f)
                     config = EdgeFormerConfig(**config_dict)
+                    logger.info(f"Loaded config from file with hidden_size={config.hidden_size}")
                 else:
-                    # Use default config
-                    config = EdgeFormerConfig()
-                
-                self.model = EdgeFormer(config)
-                self.model.load_state_dict(checkpoint)
+                    # Use default or specified config
+                    config = EdgeFormerConfig(
+                        hidden_size=self.args.hidden_size if hasattr(self.args, 'hidden_size') else 256,
+                        num_hidden_layers=6,
+                        num_attention_heads=8,
+                        intermediate_size=1024,
+                        max_position_embeddings=512,
+                        attention_type=self.args.attention_type
+                    )
+                    logger.info(f"Using default config with hidden_size={config.hidden_size}")
         else:
             logger.info("No model path provided or model not found, initializing new model")
-            
+        
             # Initialize new model with custom config
             config = EdgeFormerConfig(
-                hidden_size=256,
+                hidden_size=self.args.hidden_size if hasattr(self.args, 'hidden_size') else 256,
                 num_hidden_layers=6,
                 num_attention_heads=8,
                 intermediate_size=1024,
                 max_position_embeddings=512,
                 attention_type=self.args.attention_type
             )
-            
-            self.model = EdgeFormer(config)
-        
-        # Move model to device
+            logger.info(f"Created new model with hidden_size={config.hidden_size}")
+    
+        # Create the model with the determined config
+        self.model = EdgeFormer(config)
+    
+        # Load state dict if available
+        if self.args.model_path and os.path.exists(self.args.model_path):
+            checkpoint = torch.load(self.args.model_path, map_location='cpu')
+            if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+                # Check for dimension mismatch and warn
+                try:
+                    self.model.load_state_dict(checkpoint['model_state_dict'])
+                    logger.info("Successfully loaded model state from checkpoint")
+                except Exception as e:
+                    logger.warning(f"Failed to load model state: {e}")
+                    logger.warning("This may be due to configuration mismatch. If you want to continue with a new model, restart without --model_path")
+                    logger.warning("If you want to use the checkpoint, make sure to use compatible configuration")
+                    sys.exit(1)
+            else:
+                try:
+                    self.model.load_state_dict(checkpoint)
+                    logger.info("Successfully loaded model state from checkpoint")
+                except Exception as e:
+                    logger.warning(f"Failed to load model state: {e}")
+                    logger.warning("This may be due to configuration mismatch. If you want to continue with a new model, restart without --model_path")
+                    logger.warning("If you want to use the checkpoint, make sure to use compatible configuration")
+                    sys.exit(1)
+    
+        # Set device
         device = self.args.device
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
-        self.model.to(device)
-        
+    
+        # Store the device as an instance variable instead of setting it on the model
+        self.device = torch.device(device)
+    
+        # Move model to device
+        self.model.to(self.device)
+    
         # Print model size
         param_count = sum(p.numel() for p in self.model.parameters()) / 1e6
         logger.info(f"Model loaded: {param_count:.1f}M parameters")
@@ -128,7 +171,7 @@ class OnlineTrainingDemo:
         """Generate text from the model"""
         # Tokenize prompt
         input_ids = self.tokenizer.encode(prompt)
-        input_tensor = torch.tensor([input_ids], dtype=torch.long).to(self.model.device)
+        input_tensor = torch.tensor([input_ids], dtype=torch.long).to(self.device)
         
         # Set model to evaluation mode
         self.model.eval()
@@ -326,6 +369,9 @@ def main():
                         help='Run in batch mode instead of interactive mode')
     parser.add_argument('--input_file', type=str, default=None,
                         help='Input file for batch mode')
+    
+    parser.add_argument('--hidden_size', type=int, default=256,
+                    help='Hidden size for model configuration')
     
     args = parser.parse_args()
     
