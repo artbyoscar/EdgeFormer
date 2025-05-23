@@ -50,255 +50,220 @@ class DynamicQuantizer:
 
 
 class Int4Quantizer:
-    """INT4 quantization for EdgeFormer models"""
+    """Simplified INT4 quantization for EdgeFormer models with shape preservation"""
     
-    def __init__(self, model):
-        self.model = model
-        self.original_state_dict = {k: v.clone() for k, v in model.state_dict().items()}
-        self.quantized_state_dict = {}
-        self.scale_factors = {}
-        self.original_shapes = {}
-        
-    def quantize(self):
-        """Quantize model weights to INT4"""
-        state_dict = self.model.state_dict()
-        
-        for name, param in state_dict.items():
-            # Only quantize linear layer weights
-            if 'weight' in name and param.dim() == 2:
-                # Save original shape
-                self.original_shapes[name] = param.shape
-                
-                # Convert to numpy for easier manipulation
-                tensor = param.detach().cpu().numpy()
-                
-                # Calculate scale factor (max / 7.0 for INT4 symmetric quantization)
-                abs_max = np.abs(tensor).max()
-                scale = abs_max / 7.0
-                
-                # Quantize to INT4 range (-8 to 7)
-                quantized = np.clip(np.round(tensor / scale), -8, 7).astype(np.int8)
-                
-                # Pack two INT4 values into one INT8 value
-                quantized_packed = self._pack_int4(quantized)
-                
-                # Store quantized weights and scale factors
-                self.quantized_state_dict[name] = quantized_packed
-                self.scale_factors[name] = scale
-                
-                logger.info(f"Quantized {name}: original shape {param.shape}, "
-                           f"packed shape {quantized_packed.shape}, "
-                           f"scale {scale}")
-            else:
-                # Keep non-weight tensors as is
-                self.quantized_state_dict[name] = param
-        
-        return self
+    def __init__(self):
+        """Initialize INT4 quantizer"""
+        pass
     
-    def _pack_int4(self, tensor):
-        """Pack two INT4 values into one INT8"""
-        # Ensure even number of elements in last dimension
-        original_shape = tensor.shape
-        tensor = tensor.reshape(-1)
+    def pack_int4(self, values):
+        """
+        Pack two INT4 values per byte with shape preservation
+        Args:
+            values: torch.Tensor with INT4 values in range [-8, 7]
+        Returns:
+            dict: {
+                'packed_data': torch.Tensor of packed bytes,
+                'original_shape': tuple of original tensor shape,
+                'original_dtype': original tensor dtype,
+                'num_elements': total number of elements
+            }
+        """
+        # Store original metadata
+        original_shape = values.shape
+        original_dtype = values.dtype
+        num_elements = values.numel()
         
-        # Pad with zeros if necessary
-        padding_needed = (tensor.size % 2) != 0
-        if padding_needed:
-            tensor = np.pad(tensor, (0, 1), 'constant')
+        # Flatten tensor for processing
+        values_flat = values.flatten()
         
-        # Reshape for packing
-        tensor = tensor.reshape(-1, 2)
+        # Ensure even number of elements (pad if necessary)
+        if len(values_flat) % 2 != 0:
+            values_flat = torch.cat([values_flat, torch.zeros(1, dtype=values_flat.dtype)])
         
-        # Pack two INT4 into one INT8 (first << 4 | second & 0xF)
-        # The first INT4 value gets the high 4 bits, the second gets the low 4 bits
-        packed = ((tensor[:, 0] & 0xF) << 4) | (tensor[:, 1] & 0xF)
+        # Convert to INT4 range [-8, 7] to unsigned [0, 15]
+        values_unsigned = values_flat + 8
+        values_unsigned = torch.clamp(values_unsigned, 0, 15)
         
-        # Reshape back
-        packed_shape = list(original_shape)
-        packed_shape[-1] = packed_shape[-1] // 2 + (1 if padding_needed else 0)
+        # Pack two values per byte: (a << 4) | b
+        packed_bytes = []
+        for i in range(0, len(values_unsigned), 2):
+            a = int(values_unsigned[i].item())
+            b = int(values_unsigned[i + 1].item()) if i + 1 < len(values_unsigned) else 0
+            packed_byte = (a << 4) | b
+            packed_bytes.append(packed_byte)
         
-        return torch.tensor(packed.reshape(packed_shape), dtype=torch.int8)
-    
-    def _unpack_int4(self, packed_tensor, original_shape):
-        """Unpack INT8 tensor back to two INT4 values"""
-        # Convert to numpy
-        packed = packed_tensor.cpu().numpy().reshape(-1)
-    
-        # Calculate total elements needed in the original shape
-        total_elements = int(np.prod(original_shape))
-    
-        # Unpack INT8 to two INT4 values
-        # Create just enough space for the elements we need
-        unpacked = np.zeros(total_elements, dtype=np.int8)
-
-        # Calculate how many packed elements we need to process
-        # We might need to handle fewer elements if the original shape isn't even
-        packed_needed = (total_elements + 1) // 2
-        packed_to_process = min(len(packed), packed_needed)
-
-        # Process complete pairs (2 values per packed byte)
-        for i in range(packed_to_process):
-            if 2*i < total_elements:
-                unpacked[2*i] = (packed[i] >> 4) & 0xF
-            if 2*i + 1 < total_elements:
-                unpacked[2*i + 1] = packed[i] & 0xF
-    
-        # Handle negative values (sign extension for 4-bit)
-        # Values 8-15 represent negative numbers (-8 to -1)
-        neg_mask = unpacked > 7
-        unpacked[neg_mask] = unpacked[neg_mask] - 16
-    
-        # Fix for shape mismatch issue:
-        # Make sure unpacked has exactly the same shape as original_shape
-        if np.prod(unpacked.shape) != np.prod(original_shape):
-            if np.prod(unpacked.shape) > np.prod(original_shape):
-                # Too many elements, truncate
-                unpacked = unpacked.flatten()[:np.prod(original_shape)].reshape(original_shape)
-            else:
-                # Too few elements, pad with zeros
-                result = np.zeros(original_shape, dtype=np.int8)
-                flat_unpacked = unpacked.flatten()
-                flat_result = result.flatten()
-                flat_result[:len(flat_unpacked)] = flat_unpacked
-                unpacked = result
-    
-    # Reshape to original shape
-    return unpacked.reshape(original_shape)
-    
-    def dequantize(self, name, quantized_tensor, original_shape, device=None):
-        """Dequantize a packed INT4 tensor"""
-        if name not in self.scale_factors:
-            return quantized_tensor
-    
-        scale = self.scale_factors[name]
-    
-        # Unpack and convert back to float
-        unpacked = self._unpack_int4(quantized_tensor, original_shape)
-        dequantized = unpacked * scale
-    
-        # Create tensor with proper device and shape
-        tensor = torch.tensor(dequantized, dtype=torch.float32)
-    
-        # Ensure tensor has the exact shape we need
-        if tensor.shape != original_shape:
-            tensor = tensor.reshape(original_shape)
-        
-        if device is not None:
-            tensor = tensor.to(device)
-    
-        return tensor
-    
-    def apply_to_model(self, target_model=None):
-        """Apply quantized weights to the model using hooks"""
-        if target_model is None:
-            target_model = self.model
-        
-        # Keep track of which modules we've modified
-        modified_modules = set()
-        
-        # Create hooks for dequantization during forward pass
-        for name, module in target_model.named_modules():
-            if isinstance(module, torch.nn.Linear):
-                weight_name = f"{name}.weight"
-                if weight_name in self.quantized_state_dict and weight_name in self.scale_factors:
-                    # Skip if we've already modified this module
-                    if module in modified_modules:
-                        continue
-                    
-                    # Save original forward and parameters
-                    original_forward = module.forward
-                    quantized_weight = self.quantized_state_dict[weight_name]
-                    original_shape = self.original_shapes[weight_name]
-                    
-                    # Define the new forward method
-                    def new_forward(self_module, input, _orig_forward=original_forward, 
-                                    _weight_name=weight_name, _quantized=quantized_weight,
-                                    _orig_shape=original_shape, _self=self):
-                        try:
-                            # Dequantize weight on the fly
-                            dequantized = _self.dequantize(_weight_name, _quantized, _orig_shape, input.device)
-        
-                            # Save original weight
-                            orig_weight = self_module.weight.data.clone()
-
-                            # Make sure shapes match exactly - very important fix!
-                            if dequantized.shape != orig_weight.shape:
-                                logger.warning(f"Shape mismatch in INT4 dequantization: got {dequantized.shape}, expected {orig_weight.shape}")
-            
-                                # Try to reshape directly if possible
-                                if dequantized.numel() == orig_weight.numel():
-                                    dequantized = dequantized.reshape(orig_weight.shape)
-                                # Otherwise handle mismatches more carefully
-                                else:
-                                    # Create a tensor matching the original weight
-                                    temp = torch.zeros_like(orig_weight)
-                
-                                    # Get the min common sizes for each dimension
-                                    common_size0 = min(dequantized.shape[0], orig_weight.shape[0])
-                                    common_size1 = min(dequantized.shape[1], orig_weight.shape[1])
-                
-                                    # Copy the data we can
-                                    temp[:common_size0, :common_size1] = dequantized[:common_size0, :common_size1]
-                                    dequantized = temp
-        
-                            # Replace weight temporarily
-                            self_module.weight.data = dequantized
-        
-                            # Run forward
-                            result = _orig_forward(input)
-        
-                            # Restore original weight
-                            self_module.weight.data = orig_weight
-        
-                            return result
-                        except Exception as e:
-                            # Log the error for debugging
-                            logger.error(f"Error in INT4 forward pass: {str(e)}")
-                            logger.error(f"Quantized shape: {_quantized.shape}, Original shape: {_orig_shape}")
-                            # Fallback to original weights
-                            return _orig_forward(input)
-                    
-                    # Create a bound method
-                    bound_forward = lambda x, mod=module: new_forward(mod, x)
-                    
-                    # Replace the forward method
-                    module.forward = bound_forward
-                    
-                    # Mark this module as modified
-                    modified_modules.add(module)
-        
-        logger.info(f"Applied INT4 quantization to {len(modified_modules)} modules")
-        return target_model
-    
-    def get_memory_savings(self):
-        """Calculate memory savings from quantization"""
-        original_bytes = 0
-        quantized_bytes = 0
-        
-        for name, param in self.original_state_dict.items():
-            if name in self.quantized_state_dict:
-                # Original size (FP32 = 4 bytes per parameter)
-                original_bytes += param.numel() * 4
-                
-                # Quantized size
-                if 'weight' in name and param.dim() == 2 and name in self.scale_factors:
-                    # Packed INT4 weights (4 bits = 0.5 bytes per parameter)
-                    # Since we pack two INT4 values into one INT8, the size is half
-                    quantized_param = self.quantized_state_dict[name]
-                    quantized_bytes += quantized_param.numel() * 1  # INT8 = 1 byte per value
-                    
-                    # Scale factor (1 FP32 value per tensor)
-                    quantized_bytes += 4
-                else:
-                    # Non-quantized parameters remain in full precision
-                    quantized_bytes += param.numel() * 4
+        packed_data = torch.tensor(packed_bytes, dtype=torch.uint8)
         
         return {
-            "original_size_mb": original_bytes / (1024 * 1024),
-            "quantized_size_mb": quantized_bytes / (1024 * 1024),
-            "compression_ratio": original_bytes / quantized_bytes if quantized_bytes > 0 else 0,
-            "size_reduction_percent": (1 - quantized_bytes / original_bytes) * 100 if original_bytes > 0 else 0
+            'packed_data': packed_data,
+            'original_shape': original_shape,
+            'original_dtype': original_dtype,
+            'num_elements': num_elements
         }
+    
+    def unpack_int4(self, packed_data_dict):
+        """
+        Unpack INT4 values and restore original tensor shape
+        Args:
+            packed_data_dict: Dictionary from pack_int4() containing metadata
+        Returns:
+            torch.Tensor: Unpacked tensor with original shape
+        """
+        packed_data = packed_data_dict['packed_data']
+        original_shape = packed_data_dict['original_shape']
+        original_dtype = packed_data_dict['original_dtype']
+        num_elements = packed_data_dict['num_elements']
+        
+        # Unpack bytes back to individual values
+        unpacked_values = []
+        for packed_byte in packed_data:
+            byte_val = int(packed_byte.item())
+            # Extract first value: (byte >> 4) & 0x0F
+            a = (byte_val >> 4) & 0x0F
+            # Extract second value: byte & 0x0F  
+            b = byte_val & 0x0F
+            unpacked_values.extend([a, b])
+        
+        # Convert back to signed INT4 range: [0, 15] -> [-8, 7]
+        unpacked_tensor = torch.tensor(unpacked_values, dtype=torch.float32)
+        unpacked_tensor = unpacked_tensor - 8
+        
+        # Trim to original number of elements (remove padding)
+        original_numel = 1
+        for dim in original_shape:
+            original_numel *= dim
+        unpacked_tensor = unpacked_tensor[:original_numel]
+        
+        # Restore original shape
+        unpacked_tensor = unpacked_tensor.reshape(original_shape)
+        
+        # Convert to original dtype if needed
+        if original_dtype != torch.float32:
+            unpacked_tensor = unpacked_tensor.to(original_dtype)
+        
+        return unpacked_tensor
+    
+    def quantize(self, tensor):
+        """
+        Quantize tensor to INT4 with shape preservation
+        Args:
+            tensor: torch.Tensor to quantize
+        Returns:
+            dict: Quantized data with metadata for reconstruction
+        """
+        # Store original metadata
+        original_shape = tensor.shape
+        original_dtype = tensor.dtype
+        
+        # Calculate scale and zero point for quantization
+        tensor_min = torch.min(tensor)
+        tensor_max = torch.max(tensor)
+        
+        # Map to INT4 range [-8, 7] (15 levels)
+        range_val = tensor_max - tensor_min
+        if range_val == 0:
+            range_val = 1.0
+        scale = range_val / 15.0
+        zero_point = tensor_min
+        
+        # Avoid division by zero
+        if scale == 0:
+            scale = 1.0
+        
+        # Quantize: (tensor - zero_point) / scale
+        quantized_values = torch.round((tensor - zero_point) / scale)
+        quantized_values = torch.clamp(quantized_values, -8, 7)
+        
+        # Pack the quantized values
+        packed_data = self.pack_int4(quantized_values)
+        
+        # Add quantization metadata
+        quantization_metadata = {
+            'scale': scale,
+            'zero_point': zero_point,
+            'original_shape': original_shape,
+            'original_dtype': original_dtype
+        }
+        
+        # Combine packed data with quantization metadata
+        return {
+            **packed_data,
+            **quantization_metadata
+        }
+    
+    def dequantize(self, quantized_data, target_shape=None):
+        """
+        Dequantize INT4 data back to original tensor
+        Args:
+            quantized_data: dict from quantize() method
+            target_shape: optional shape override (for compatibility)
+        Returns:
+            torch.Tensor: Dequantized tensor with original shape and scale
+        """
+        # Extract quantization metadata
+        scale = quantized_data['scale']
+        zero_point = quantized_data['zero_point']
+        original_shape = target_shape or quantized_data['original_shape']
+        original_dtype = quantized_data['original_dtype']
+        
+        # Unpack INT4 values
+        unpacked_values = self.unpack_int4(quantized_data)
+        
+        # Ensure correct shape (compatibility with target_shape parameter)
+        if target_shape is not None and unpacked_values.shape != target_shape:
+            # Handle shape mismatch by reshaping
+            if unpacked_values.numel() == torch.prod(torch.tensor(target_shape)):
+                unpacked_values = unpacked_values.reshape(target_shape)
+            else:
+                raise ValueError(f"Cannot reshape {unpacked_values.shape} to {target_shape}")
+        
+        # Dequantize: values * scale + zero_point
+        dequantized = unpacked_values * scale + zero_point
+        
+        # Convert to original dtype
+        dequantized = dequantized.to(original_dtype)
+        
+        return dequantized
+    
+    def get_compression_ratio(self, original_tensor, quantized_data):
+        """Calculate compression ratio achieved"""
+        original_bytes = original_tensor.numel() * 4  # float32 = 4 bytes
+        compressed_bytes = quantized_data['packed_data'].numel() * 1  # uint8 = 1 byte
+        return original_bytes / compressed_bytes
+
+
+class DynamicQuantizer:
+    """Main quantization interface that handles different quantization types"""
+    
+    def __init__(self, quantization_type="int8"):
+        self.quantization_type = quantization_type
+        
+        if quantization_type == "int4":
+            self.quantizer = Int4Quantizer()
+        else:
+            raise ValueError(f"Only INT4 quantization is currently supported, got: {quantization_type}")
+    
+    def quantize(self, tensor):
+        """Quantize tensor using the specified quantization type"""
+        return self.quantizer.quantize(tensor)
+    
+    def dequantize(self, quantized_data, target_shape=None):
+        """Dequantize tensor using the specified quantization type"""
+        return self.quantizer.dequantize(quantized_data, target_shape)
+    
+    def get_compression_ratio(self, original_tensor, quantized_data):
+        """Get compression ratio"""
+        if hasattr(self.quantizer, 'get_compression_ratio'):
+            return self.quantizer.get_compression_ratio(original_tensor, quantized_data)
+        else:
+            # Fallback calculation
+            original_bytes = original_tensor.numel() * 4
+            if 'packed_data' in quantized_data:
+                compressed_bytes = quantized_data['packed_data'].numel()
+            else:
+                compressed_bytes = quantized_data.numel()
+            return original_bytes / compressed_bytes
 
 
 def benchmark_quantized_models(original_model, test_input, test_runs=10):
