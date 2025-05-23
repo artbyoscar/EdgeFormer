@@ -160,19 +160,18 @@ class Int4Quantizer:
         tensor_min = torch.min(tensor)
         tensor_max = torch.max(tensor)
         
-        # Map to INT4 range [-8, 7] (15 levels)
-        range_val = tensor_max - tensor_min
-        if range_val == 0:
-            range_val = 1.0
-        scale = range_val / 15.0
-        zero_point = tensor_min
-        
-        # Avoid division by zero
-        if scale == 0:
+        # Use symmetric quantization for better accuracy
+        abs_max = torch.max(torch.abs(tensor))
+        if abs_max == 0:
             scale = 1.0
+            zero_point = 0.0
+        else:
+            # Symmetric quantization around zero gives better results
+            scale = abs_max / 7.0  # Use 7 instead of 8 for safety margin
+            zero_point = 0.0
         
-        # Quantize: (tensor - zero_point) / scale
-        quantized_values = torch.round((tensor - zero_point) / scale)
+        # Quantize: tensor / scale (symmetric around zero)
+        quantized_values = torch.round(tensor / scale)
         quantized_values = torch.clamp(quantized_values, -8, 7)
         
         # Pack the quantized values
