@@ -295,7 +295,7 @@ def generate_executive_summary(results):
 *Generated from comprehensive edge device simulation - {len(results)} platforms, {sum(len(results[d]) for d in results)} model configurations tested*
 """
     
-    with open('executive_summary.md', 'w') as f:
+    with open('executive_summary.md', 'w', encoding='utf-8') as f:
         f.write(summary)
 
 if __name__ == "__main__":
