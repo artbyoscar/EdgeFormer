@@ -615,4 +615,4 @@ python examples/deployment_prep/prepare_for_hardware.py
 
 *Validated algorithms. Hardware readiness. Production pathway.*
 
-**ALGORITHM PROVEN. HARDWARE VALIDATION IN PROGRESS. PRODUCTION TARGETED.**
+**ALGORITHM PROVEN. HARDWARE VALIDATION IN PROGRESS. PRODUCTION TARGETED.** 
