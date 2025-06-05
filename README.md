@@ -156,6 +156,13 @@ python showcase_edgeformer.py
 """
 ```
 
+### **Generating Documentation**
+```bash
+python scripts/generate_docs.py --output_dir edgeformer-docs/docs
+mkdocs build -f edgeformer-docs/mkdocs.yml
+```
+*The generated site in `edgeformer-docs/site/` is ignored by Git.*
+
 ---
 
 ## 🏗️ **Production-Ready Architecture**
