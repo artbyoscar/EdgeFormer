@@ -1,0 +1,12 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+  - repo: local
+    hooks:
+      - id: check-final-newline
+        name: Check for trailing newline
+        entry: scripts/check-final-newline.sh
+        language: script
+        pass_filenames: true
