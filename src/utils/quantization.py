@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-print("DEBUG: quantization.py (User's Full Version) - START of file execution")
+logger.debug("quantization.py - START of file execution")
 
 """
 EdgeFormer Quantization Utilities
@@ -24,7 +24,7 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
-print("DEBUG: quantization.py - Logger defined.")
+logger.debug("quantization.py - Logger defined.")
 
 
 class DynamicQuantizer:
@@ -94,7 +94,7 @@ class DynamicQuantizer:
             return model
 
 
-print(f"DEBUG: quantization.py - DynamicQuantizer class defined. Type: {type(DynamicQuantizer)}")
+logger.debug(f"DynamicQuantizer class defined. Type: {type(DynamicQuantizer)}")
 
 
 class Int4Quantizer:
@@ -103,19 +103,6 @@ class Int4Quantizer:
     Provides 8x memory reduction with minimal accuracy loss.
     """
     
-    def __init__(self, block_size=64, symmetric=False):
-        """
-        Initialize INT4 quantizer.
-        
-        Args:
-            block_size: Size of quantization blocks
-            symmetric: Use symmetric quantization if True
-        """
-        self.block_size = block_size
-        self.symmetric = symmetric
-        self.quantized_layers = {}
-        
-        logger.info(f"INT4 Quantizer initialized with block_size={block_size}, symmetric={symmetric}")
     
     def quantize(self, tensor):
         """
@@ -176,72 +163,6 @@ class Int4Quantizer:
         logger.info(f"INT4 Quantizer initialized with block_size={block_size}, symmetric={symmetric}")
 
 
-    def apply_to_model(self, model):
-        """
-        Apply INT4 quantization to all Linear layers in the model.
-    
-        Args:
-            model: PyTorch model to quantize
-        
-        Returns:
-            Model with quantized weights
-        """
-        quantized_model = type(model)(model.config) if hasattr(model, 'config') else model
-    
-        # Copy state dict and quantize linear layer weights
-        state_dict = model.state_dict()
-        new_state_dict = {}
-    
-        for name, param in state_dict.items():
-            if 'weight' in name and param.dim() >= 2:
-                # Skip sensitive layers that impact accuracy most
-                if ('embedding' in name or 'lm_head' in name or 
-                    'pos_encoding' in name or 'output_projection' in name):
-                    logger.info(f"Skipping sensitive layer: {name}")
-                    new_state_dict[name] = param  # Keep original precision
-                    continue
-                
-                # Quantize weight matrix
-                logger.info(f"Quantizing layer: {name}")
-            
-                try:
-                    quantized_weight, scale, zero_point = self.quantize(param)
-                
-                    # Store quantization metadata
-                    self.quantized_layers[name] = {
-                        'scale': scale,
-                        'zero_point': zero_point,
-                        'original_shape': param.shape
-                    }
-                
-                    # Use the quantized weight directly (it's already dequantized for compatibility)
-                    new_state_dict[name] = quantized_weight
-                
-                except Exception as e:
-                    logger.warning(f"Failed to quantize {name}: {e}")
-                    new_state_dict[name] = param
-            else:
-                # Keep non-weight parameters unchanged
-                new_state_dict[name] = param
-    
-        # Load quantized weights
-        quantized_model.load_state_dict(new_state_dict)
-    
-        # Store quantization metadata in the model for size calculation
-        quantized_model._quantization_info = {
-            'quantizer': self,
-            'quantized_layers': self.quantized_layers,
-            'compression_stats': self.get_memory_savings()
-        }
-    
-        logger.info(f"Quantized {len(self.quantized_layers)} layers")
-    
-        # Log compression statistics
-        stats = self.get_memory_savings()
-        logger.info(f"Theoretical compression: {stats['compression_ratio']:.1f}x, "
-                f"Memory saved: {stats['memory_saved_mb']:.2f} MB")
-    
-        return quantized_model
 
 
     def _quantize_channel(self, channel_tensor, target_shape=None):
@@ -482,7 +403,7 @@ class Int4Quantizer:
         return effective_compression
 
 
-print(f"DEBUG: quantization.py - Int4Quantizer class defined. Type: {type(Int4Quantizer)}")
+logger.debug(f"Int4Quantizer class defined. Type: {type(Int4Quantizer)}")
 
 
 def benchmark_quantized_models(original_model, quantized_model, test_input, num_runs=10):
@@ -622,16 +543,16 @@ cleanup_memory()
 
 
 # --- Debug prints at the very END of the module ---
-print(f"DEBUG: quantization.py (User's Full Version) - 'quantize_model' in globals(): {'quantize_model' in globals()}")
+logger.debug(f"'quantize_model' in globals(): {'quantize_model' in globals()}")
 if 'quantize_model' in globals():
-    print(f"DEBUG: quantization.py (User's Full Version) - type(quantize_model) at END of module: {type(quantize_model)}")
-    print(f"DEBUG: quantization.py (User's Full Version) - Is quantize_model callable at END of module? {callable(quantize_model)}")
+    logger.debug(f"type(quantize_model) at END of module: {type(quantize_model)}")
+    logger.debug(f"Is quantize_model callable at END of module? {callable(quantize_model)}")
 else:
-    print("DEBUG: quantization.py (User's Full Version) - 'quantize_model' NOT in globals at end of module.")
+    logger.debug("'quantize_model' NOT in globals at end of module.")
 
 # Check for other things that might be accidentally named quantize_model
 other_qm = [name for name, obj in globals().items() if name.lower() == 'quantize_model' and name != 'quantize_model']
 if other_qm:
-    print(f"DEBUG: quantization.py - Other items similar to 'quantize_model' in globals: {other_qm}")
+    logger.debug(f"Other items similar to 'quantize_model' in globals: {other_qm}")
 
-print("DEBUG: quantization.py (User's Full Version) - END of file execution")
+logger.debug("quantization.py - END of file execution")
