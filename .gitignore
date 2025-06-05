@@ -1,6 +1,7 @@
 # Python virtual environments
 venv/
 edgeformer_env/
+edgeformer_env_fresh/
 env/
 ENV/
 *.venv
