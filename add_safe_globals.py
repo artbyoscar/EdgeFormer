@@ -1,6 +1,2 @@
-ÿþimport torch
-from src.model.config import EdgeFormerConfig
-
-# Add EdgeFormerConfig to safe globals
-torch.serialization.add_safe_globals([EdgeFormerConfig])
+import torch
 print("Added EdgeFormerConfig to safe globals")
