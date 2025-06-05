@@ -43,4 +43,6 @@ def log_tensor_shape(tensor, name, logger, debug_mode=False):
         shape_str = str(tensor.shape)
         dtype_str = str(tensor.dtype)
         mem_size = tensor.element_size() * tensor.numel() / (1024 * 1024)  # Size in MB
-        logger.debug(f"Tensor: {name}, Shape: {shape_str}, Dtype: {dtype_str}, Memory: {mem_size:.2f} MB")
+        logger.debug(
+            f"Tensor: {name}, Shape: {shape_str}, Dtype: {dtype_str}, Memory: {mem_size:.2f} MB"
+        )
