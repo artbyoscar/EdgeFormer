@@ -87,3 +87,4 @@ checkpoints/final_model.pt
 benchmark_results_*/
 *.png
 !README_images/*.png  # Keep any images needed for the README
+edgeformer-docs/site/
