@@ -485,6 +485,52 @@ class Int4Quantizer:
 print(f"DEBUG: quantization.py - Int4Quantizer class defined. Type: {type(Int4Quantizer)}")
 
 
+class AdaptiveInt4Quantizer(Int4Quantizer):
+    """Int4 quantizer with adaptive block size and outlier handling."""
+
+    def _get_optimal_block_size(self, tensor, layer_name: str) -> int:
+        """Select block size dynamically based on layer characteristics."""
+        if "attention" in layer_name:
+            return 32
+        if "ffn" in layer_name or "intermediate" in layer_name:
+            return 128
+        return 64
+
+    def _handle_outliers(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Clip extreme values to reduce quantization error."""
+        low = torch.quantile(tensor, 0.005)
+        high = torch.quantile(tensor, 0.995)
+        return torch.clamp(tensor, low, high)
+
+    def quantize(self, tensor: torch.Tensor, layer_name: str = ""):
+        tensor = self._handle_outliers(tensor)
+        self.block_size = self._get_optimal_block_size(tensor, layer_name)
+        return super().quantize(tensor)
+
+    def apply_to_model(self, model):
+        quantized_model = type(model)(model.config) if hasattr(model, "config") else model
+        state_dict = model.state_dict()
+        new_state_dict = {}
+        for name, param in state_dict.items():
+            if "weight" in name and param.dim() >= 2:
+                q_w, scale, zp = self.quantize(param, layer_name=name)
+                new_state_dict[name] = q_w
+                self.quantized_layers[name] = {
+                    "scale": scale,
+                    "zero_point": zp,
+                    "original_shape": param.shape,
+                }
+            else:
+                new_state_dict[name] = param
+        quantized_model.load_state_dict(new_state_dict)
+        quantized_model._quantization_info = {
+            "quantizer": self,
+            "quantized_layers": self.quantized_layers,
+            "compression_stats": self.get_memory_savings(),
+        }
+        return quantized_model
+
+
 def benchmark_quantized_models(original_model, quantized_model, test_input, num_runs=10):
     """
     Benchmark performance comparison between original and quantized models.
