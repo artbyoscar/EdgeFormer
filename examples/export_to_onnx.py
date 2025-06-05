@@ -90,7 +90,8 @@ if __name__ == "__main__":
                         help="Create a mobile deployment package")
     
     args = parser.parse_args()
-    main(args)def export_to_onnx(
+    main(args)
+def export_to_onnx(
     model: EdgeFormer,
     output_path: str,
     optimize: bool = True,
@@ -199,7 +200,8 @@ if __name__ == "__main__":
         
     except Exception as e:
         logger.error(f"Failed to export model to ONNX: {str(e)}")
-        return False#!/usr/bin/env python
+        return False
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
